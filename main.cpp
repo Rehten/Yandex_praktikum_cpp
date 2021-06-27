@@ -1,6 +1,7 @@
 // search_server_s1_t2_v2.cpp
 
 #include <algorithm>
+#include <numeric>
 #include <cmath>
 #include <iostream>
 #include <map>
@@ -11,7 +12,7 @@
 
 using namespace std;
 
-const int MAX_RESULT_DOCUMENT_COUNT = 5;
+const int EPSILON = 1e-6;
 
 string ReadLine() {
   string s;
@@ -85,14 +86,14 @@ public:
 
     sort(matched_documents.begin(), matched_documents.end(),
          [](const Document& lhs, const Document& rhs) {
-           if (abs(lhs.relevance - rhs.relevance) < 1e-6) {
+           if (abs(lhs.relevance - rhs.relevance) < EPSILON) {
              return lhs.rating > rhs.rating;
            } else {
              return lhs.relevance > rhs.relevance;
            }
          });
-    if (matched_documents.size() > MAX_RESULT_DOCUMENT_COUNT) {
-      matched_documents.resize(MAX_RESULT_DOCUMENT_COUNT);
+    if (matched_documents.size() > MaxResultDocumentCount) {
+      matched_documents.resize(MaxResultDocumentCount);
     }
     return matched_documents;
   }
@@ -135,17 +136,14 @@ private:
     int rating;
     DocumentStatus status;
   };
+  static const int MaxResultDocumentCount = 5;
 
   set<string> stop_words_;
   map<string, map<int, double>> word_to_document_freqs_;
   map<int, DocumentData> documents_;
 
   static int ComputeAverageRating(const vector<int>& ratings) {
-    int rating_sum = 0;
-    for (const int rating : ratings) {
-      rating_sum += rating;
-    }
-    return rating_sum / static_cast<int>(ratings.size());
+    return accumulate(ratings.begin(), ratings.end(), 0) / static_cast<int>(ratings.size());
   }
 
   bool IsStopWord(const string& word) const {
