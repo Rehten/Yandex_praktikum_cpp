@@ -9,14 +9,19 @@
 
 using namespace std;
 
-vector<string> split_into_words(const string& text) {
+vector<string> split_into_words(const string &text)
+{
   vector<string> words;
   string word;
-  for (const char c : text) {
-    if (c == ' ') {
+  for (const char c : text)
+  {
+    if (c == ' ')
+    {
       words.push_back(word);
       word = "";
-    } else {
+    }
+    else
+    {
       word += c;
     }
   }
@@ -205,12 +210,12 @@ public:
       buses_with_stop = stops_to_buses_.at(stop);
     }
 
-    return { stop, buses_with_stop };
+    return {stop, buses_with_stop};
   }
 
   StopsForBusResponse GetStopsForBus(const string &bus) const
   {
-    vector<pair<string, vector<string>>> stops_to_buses {};
+    vector<pair<string, vector<string>>> stops_to_buses{};
 
     if (buses_to_stops_.count(bus))
     {
@@ -228,12 +233,12 @@ public:
       }
     }
 
-    return { bus, stops_to_buses };
+    return {bus, stops_to_buses};
   }
 
   AllBusesResponse GetAllBuses() const
   {
-    return { buses_to_stops_ };
+    return {buses_to_stops_};
   }
 };
 
@@ -295,7 +300,7 @@ void test_query_type_all_buses_read()
 
 void test_buses_for_stops_response_read()
 {
-  BusesForStopResponse response{ "TestStop"s, { "Bus1"s, "Bus2"s } };
+  BusesForStopResponse response{"TestStop"s, {"Bus1"s, "Bus2"s}};
   ostringstream output;
 
   output << response;
@@ -390,13 +395,13 @@ void test_all_buses_response_read()
 
   assert(
     output.str() == (
-        "Bus MyBus1: Stop1 Stop2\n"s
-        +
-        "Bus MyBus2: Stop2 Stop3\n"s
-        +
-        "Bus MyBus3: Stop3 Stop4"s
-      )
-    );
+      "Bus MyBus1: Stop1 Stop2\n"s
+      +
+      "Bus MyBus2: Stop2 Stop3\n"s
+      +
+      "Bus MyBus3: Stop3 Stop4"s
+    )
+  );
 }
 
 void test_all_buses_response_empty()
