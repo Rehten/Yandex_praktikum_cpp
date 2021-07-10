@@ -108,23 +108,41 @@ ostream &operator<<(ostream &os, const BusesForStopResponse &r)
 struct StopsForBusResponse
 {
   string bus;
-  vector<string> stops;
+  vector<pair<string, vector<string>>> stops_to_buses;
 };
 
 ostream &operator<<(ostream &os, const StopsForBusResponse &r)
 {
-  if (r.stops.empty())
+  if (!r.bus.size() || r.stops_to_buses.empty())
   {
     os << "No bus"s;
 
     return os;
   }
 
-  os << "Bus "s << r.bus << ':';
-
-  for (const auto &stop : r.stops)
+  for (const auto &[stop, buses] : r.stops_to_buses)
   {
-    os << ' ' << stop;
+    os << "Stop "s << stop << ':';
+
+    if (buses.size() == 1 && buses[0] == r.bus)
+    {
+      os << " no interchange";
+    }
+    else
+    {
+      for (const auto &stop_bus : buses)
+      {
+        if (stop_bus != r.bus)
+        {
+          os << " " << stop_bus;
+        }
+      }
+    }
+
+    if (stop != r.stops_to_buses.rbegin()->first)
+    {
+      os << endl;
+    }
   }
 
   return os;
@@ -192,14 +210,25 @@ public:
 
   StopsForBusResponse GetStopsForBus(const string &bus) const
   {
-    vector<string> stops_for_bus = {};
+    vector<pair<string, vector<string>>> stops_to_buses {};
 
     if (buses_to_stops_.count(bus))
     {
-      stops_for_bus = buses_to_stops_.at(bus);
+      for (const auto &stop : buses_to_stops_.at(bus))
+      {
+        stops_to_buses.push_back({stop, {}});
+
+        if (stops_to_buses_.count(stop))
+        {
+          for (const auto &stop_bus : stops_to_buses_.at(stop))
+          {
+            stops_to_buses.rbegin()->second.push_back(stop_bus);
+          }
+        }
+      }
     }
 
-    return { bus, stops_for_bus };
+    return { bus, stops_to_buses };
   }
 
   AllBusesResponse GetAllBuses() const
@@ -271,7 +300,7 @@ void test_buses_for_stops_response_read()
 
   output << response;
 
-  assert(output.str() == "Stop TestStop: Bus1 Bus2"s);
+  assert(output.str() == "Bus1 Bus2"s);
 }
 
 void test_buses_for_stops_response_empty()
@@ -286,12 +315,54 @@ void test_buses_for_stops_response_empty()
 
 void test_stops_for_bus_response_read()
 {
-  StopsForBusResponse response{"MyBus"s, { "Stop1"s, "Stop2"s }};
+  StopsForBusResponse response{
+    "Bus2"s,
+    {
+      {"Stop1"s, {"Bus1"s, "Bus2"s}},
+      {"Stop2"s, {"Bus2"s, "Bus3"s}},
+      {"Stop3"s, {"Bus2"s, "Bus3"s, "Bus4"s}},
+    }
+  };
   ostringstream output{};
 
   output << response;
 
-  assert(output.str() == "Bus MyBus: Stop1 Stop2"s);
+  assert(
+    output.str() == (
+      "Stop Stop1: Bus1\n"s
+      +
+      "Stop Stop2: Bus3\n"s
+      +
+      "Stop Stop3: Bus3 Bus4"s
+    )
+  );
+}
+
+void test_stops_for_bus_response_no_interchange()
+{
+  StopsForBusResponse response{
+    "Bus2"s,
+    {
+      {"Stop1"s, {"Bus1"s, "Bus2"s}},
+      {"Stop2"s, {"Bus2"s}},
+      {"Stop3"s, {"Bus2"s, "Bus3"s, "Bus4"s}},
+    }
+  };
+  ostringstream output{};
+
+  output << response;
+
+  auto a = output.str();
+
+  assert(
+    output.str() == (
+      "Stop Stop1: Bus1\n"s
+      +
+      "Stop Stop2: no interchange\n"s
+      +
+      "Stop Stop3: Bus3 Bus4"s
+    )
+  );
 }
 
 void test_stops_for_bus_response_empty()
@@ -359,6 +430,21 @@ void test_all_buses_response_empty()
 
 int main()
 {
+  test_query_type_new_bus_read();
+  test_query_type_buses_for_stop_read();
+  test_query_type_stops_for_bus_read();
+  test_query_type_all_buses_read();
+
+  test_buses_for_stops_response_read();
+  test_buses_for_stops_response_empty();
+
+  test_stops_for_bus_response_read();
+  test_stops_for_bus_response_no_interchange();
+  test_stops_for_bus_response_empty();
+
+  test_all_buses_response_read();
+  test_all_buses_response_empty();
+
   int query_count;
   Query q;
 
