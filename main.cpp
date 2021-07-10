@@ -409,23 +409,6 @@ void test_all_buses_response_empty()
   assert(output.str() == "No buses"s);
 }
 
-//int main()
-//{
-//  test_query_type_new_bus_read();
-//  test_query_type_buses_for_stop_read();
-//  test_query_type_stops_for_bus_read();
-//  test_query_type_all_buses_read();
-//
-//  test_buses_for_stops_response_read();
-//  test_buses_for_stops_response_empty();
-//
-//  test_stops_for_bus_response_read();
-//  test_stops_for_bus_response_empty();
-//
-//  test_all_buses_response_read();
-//  test_all_buses_response_empty();
-//}
-
 // Не меняя тела функции main, реализуйте функции и классы выше
 
 int main()
