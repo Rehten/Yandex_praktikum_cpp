@@ -48,30 +48,40 @@ struct Query
 
 istream &operator>>(istream &is, Query &q)
 {
-  string user_command{};
+  string user_input{};
+  vector<string> user_command_query{};
 
-  getline(is, user_command);
-
-  vector<string> user_command_query = split_into_words(user_command);
-
-  if (user_command_query.empty())
-  {
-    return is;
-  }
+  is >> user_input;
+  user_command_query.push_back(user_input);
 
   if (user_command_query[0] == "NEW_BUS"s)
   {
+    is >> user_input;
+    user_command_query.push_back(user_input);
+    is >> user_input;
+    user_command_query.push_back(user_input);
+
+    for (int i = 0; i < stoi(user_command_query[2]); ++i)
+    {
+      is >> user_input;
+      user_command_query.push_back(user_input);
+    }
+
     q.type = QueryType::NewBus;
     q.bus = user_command_query[1];
     q.stops = vector<string>({user_command_query.begin() + 3, user_command_query.end()});
   }
   else if (user_command_query[0] == "BUSES_FOR_STOP"s)
   {
+    is >> user_input;
+    user_command_query.push_back(user_input);
     q.type = QueryType::BusesForStop;
     q.stop = user_command_query[1];
   }
   else if (user_command_query[0] == "STOPS_FOR_BUS"s)
   {
+    is >> user_input;
+    user_command_query.push_back(user_input);
     q.type = QueryType::StopsForBus;
     q.bus = user_command_query[1];
   }
@@ -188,8 +198,8 @@ ostream &operator<<(ostream &os, const AllBusesResponse &r)
 class BusManager
 {
 private:
-  map<string, vector<string>> buses_to_stops_;
-  map<string, vector<string>> stops_to_buses_;
+  map<string, vector<string>> buses_to_stops_{};
+  map<string, vector<string>> stops_to_buses_{};
 public:
   void AddBus(const string &bus, const vector<string> &stops)
   {
