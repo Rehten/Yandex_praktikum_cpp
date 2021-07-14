@@ -1,471 +1,165 @@
-#include <cassert>
-#include <iostream>
-#include <map>
-#include <string>
-#include <vector>
-#include <set>
-#include <sstream>
-#include <algorithm>
+
 
 using namespace std;
 
-vector<string> split_into_words(const string &text)
-{
-  vector<string> words;
-  string word;
-  for (const char c : text)
-  {
-    if (c == ' ')
-    {
-      words.push_back(word);
-      word = "";
-    }
-    else
-    {
-      word += c;
-    }
-  }
-  words.push_back(word);
+const int EPSILON = 1e-6;
 
-  return words;
+// Тест проверяет, что поисковая система исключает стоп-слова при добавлении документов
+void TestExcludeStopWordsFromAddedDocumentContent() {
+  const int doc_id = 42;
+  const string content = "cat in the city"s;
+  const vector<int> ratings = {1, 2, 3};
+  // Сначала убеждаемся, что поиск слова, не входящего в список стоп-слов,
+  // находит нужный документ
+  {
+    SearchServer server;
+    server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
+    const auto found_docs = server.FindTopDocuments("in"s);
+    ASSERT(found_docs.size() == 1);
+    const Document& doc0 = found_docs[0];
+    ASSERT(doc0.id == doc_id);
+  }
+
+  // Затем убеждаемся, что поиск этого же слова, входящего в список стоп-слов,
+  // возвращает пустой результат
+  {
+    SearchServer server;
+    server.SetStopWords("in the"s);
+    server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
+    ASSERT(server.FindTopDocuments("in"s).empty());
+  }
 }
 
-enum class QueryType
-{
-  NewBus,
-  BusesForStop,
-  StopsForBus,
-  AllBuses,
-};
+/*
+Разместите код остальных тестов здесь
+*/
+void TestRemovedDocumentIfMatchMinusWord() {
+  const int doc_id = 42;
+  const string content = "cat in the city"s;
+  const vector<int> ratings = {1, 2, 3};
 
-struct Query
-{
-  QueryType type;
-  string bus;
-  string stop;
-  vector<string> stops;
-};
-
-istream &operator>>(istream &is, Query &q)
-{
-  string user_input{};
-  vector<string> user_command_query{};
-
-  is >> user_input;
-  user_command_query.push_back(user_input);
-
-  if (user_command_query[0] == "NEW_BUS"s)
   {
-    is >> user_input;
-    user_command_query.push_back(user_input);
-    is >> user_input;
-    user_command_query.push_back(user_input);
+    SearchServer server;
+    server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
+    const auto found_docs = server.FindTopDocuments("-in"s);
+    ASSERT(!found_docs.size());
+  }
+}
+void TestMatchedWords() {
+  const int doc_id = 42;
+  const string content = "cat in the city"s;
+  const string content1 = "White meat on black street"s;
+  const vector<int> ratings = {1, 2, 3};
+  const vector<int> ratings1 = {2, 3, 4};
 
-    for (int i = 0; i < stoi(user_command_query[2]); ++i)
-    {
-      is >> user_input;
-      user_command_query.push_back(user_input);
-    }
-
-    q.type = QueryType::NewBus;
-    q.bus = user_command_query[1];
-    q.stops = vector<string>({user_command_query.begin() + 3, user_command_query.end()});
-  }
-  else if (user_command_query[0] == "BUSES_FOR_STOP"s)
   {
-    is >> user_input;
-    user_command_query.push_back(user_input);
-    q.type = QueryType::BusesForStop;
-    q.stop = user_command_query[1];
+    SearchServer server;
+    server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
+    server.AddDocument(doc_id + 1, content1, DocumentStatus::ACTUAL, ratings1);
+    const auto found_docs = server.FindTopDocuments("in meat"s);
+    ASSERT(found_docs[0].relevance);
+    ASSERT(found_docs[1].relevance);
   }
-  else if (user_command_query[0] == "STOPS_FOR_BUS"s)
-  {
-    is >> user_input;
-    user_command_query.push_back(user_input);
-    q.type = QueryType::StopsForBus;
-    q.bus = user_command_query[1];
-  }
-  else if (user_command_query[0] == "ALL_BUSES"s)
-  {
-    q.type = QueryType::AllBuses;
-  }
-
-  return is;
 }
 
-struct BusesForStopResponse
-{
-  string stop;
-  vector<string> buses;
-};
+void TestRatingWords() {
+  const int doc_id = 42;
+  const string content = "cat in the city"s;
+  const string content1 = "White meat on black street"s;
+  const vector<int> ratings = {1, 2, 3};
+  const vector<int> ratings1 = {2, 3, 4};
 
-ostream &operator<<(ostream &os, const BusesForStopResponse &r)
-{
-  if (r.buses.empty())
   {
-    os << "No stop"s;
-
-    return os;
+    SearchServer server;
+    server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
+    server.AddDocument(doc_id + 1, content1, DocumentStatus::ACTUAL, ratings1);
+    const auto found_docs = server.FindTopDocuments("in meat"s);
+    ASSERT(found_docs[0].rating == 2);
+    ASSERT(found_docs[1].rating == 3);
   }
-
-  for (auto bus_iterator = r.buses.begin(); bus_iterator != r.buses.end(); ++bus_iterator)
-  {
-    if (bus_iterator != r.buses.begin())
-    {
-      os << ' ';
-    }
-    os << *bus_iterator;
-  }
-
-  return os;
 }
 
-struct StopsForBusResponse
-{
-  string bus;
-  vector<pair<string, vector<string>>> stops_to_buses;
-};
+void TestSortedByRelevanceWords() {
+  const int doc_id = 42;
+  const string content = "cat in the city"s;
+  const string content1 = "White meat on black street"s;
+  const string content2 = "in in in in"s;
+  const string content3 = "in in in in"s;
+  const vector<int> ratings = {1, 2, 3};
+  const vector<int> ratings1 = {2, 3, 4};
+  const vector<int> ratings2 = {2, 3, 4};
+  const vector<int> ratings3 = {6, 6, 6};
 
-ostream &operator<<(ostream &os, const StopsForBusResponse &r)
-{
-  if (!r.bus.size() || r.stops_to_buses.empty())
   {
-    os << "No bus"s;
+    SearchServer server;
+    server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
+    server.AddDocument(doc_id + 1, content1, DocumentStatus::ACTUAL, ratings1);
+    server.AddDocument(doc_id + 2, content2, DocumentStatus::ACTUAL, ratings2);
+    server.AddDocument(doc_id + 3, content3, DocumentStatus::ACTUAL, ratings3);
+    const auto found_docs = server.FindTopDocuments("in meat"s);
 
-    return os;
+    ASSERT(found_docs[0].id == 45);
+    ASSERT(found_docs[1].id == 44);
+    ASSERT(found_docs[2].id == 43);
+    ASSERT(found_docs[3].id == 42);
   }
+}
 
-  for (const auto &[stop, buses] : r.stops_to_buses)
+void TestFilteredByUserWords() {
+  const int doc_id = 42;
+  const string content = "cat in the city"s;
+  const string content1 = "White meat on black street"s;
+  const string content2 = "in in in in"s;
+  const vector<int> ratings = {1, 2, 3};
+  const vector<int> ratings1 = {2, 3, 4};
+  const vector<int> ratings2 = {2, 3, 4};
+
   {
-    os << "Stop "s << stop << ':';
-
-    if (buses.size() == 1 && buses[0] == r.bus)
-    {
-      os << " no interchange";
-    }
-    else
-    {
-      for (const auto &stop_bus : buses)
-      {
-        if (stop_bus != r.bus)
-        {
-          os << " " << stop_bus;
-        }
+    SearchServer server;
+    server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
+    server.AddDocument(doc_id + 1, content1, DocumentStatus::IRRELEVANT, ratings1);
+    server.AddDocument(doc_id + 2, content2, DocumentStatus::BANNED, ratings2);
+    const auto found_docs = server.FindTopDocuments(
+      "in meat"s,
+      [](int document_id, DocumentStatus status, int rating) -> bool {
+        return status == DocumentStatus::ACTUAL || status == DocumentStatus::BANNED;
       }
-    }
-
-    if (stop != r.stops_to_buses.rbegin()->first)
-    {
-      os << endl;
-    }
+    );
+    ASSERT(found_docs.size() == 2);
+    ASSERT(found_docs[0].id == 44);
+    ASSERT(found_docs[1].id == 42);
   }
-
-  return os;
 }
 
-struct AllBusesResponse
-{
-  map<string, vector<string>> buses_to_stops;
-};
+void TestCalculatedRelevance() {
 
-ostream &operator<<(ostream &os, const AllBusesResponse &r)
-{
-  if (r.buses_to_stops.empty())
+  const int doc_id = 42;
+  const string content = "cat in the city"s;
+  const string content1 = "White meat on black street"s;
+  const string content2 = "in in in in"s;
+  const vector<int> ratings = {1, 2, 3};
+  const vector<int> ratings1 = {2, 3, 4};
+  const vector<int> ratings2 = {2, 3, 4};
+
   {
-    os << "No buses"s;
-
-    return os;
+    SearchServer server;
+    server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
+    server.AddDocument(doc_id + 1, content1, DocumentStatus::ACTUAL, ratings1);
+    server.AddDocument(doc_id + 2, content2, DocumentStatus::ACTUAL, ratings2);
+    const auto found_docs = server.FindTopDocuments("in meat"s);
+    ASSERT(abs(found_docs[0].relevance - 0.405465) > EPSILON);
+    ASSERT(abs(found_docs[1].relevance - 0.219722) > EPSILON);
+    ASSERT(abs(found_docs[2].relevance - 0.101366) > EPSILON);
   }
-
-  for (const auto &[bus, stops] : r.buses_to_stops)
-  {
-    os << "Bus "s << bus << ':';
-
-    for (const auto &stop : stops)
-    {
-      os << ' ' << stop;
-    }
-
-    if (bus != r.buses_to_stops.rbegin()->first)
-    {
-      os << endl;
-    }
-  }
-
-  return os;
 }
 
-class BusManager
-{
-private:
-  map<string, vector<string>> buses_to_stops_{};
-  map<string, vector<string>> stops_to_buses_{};
-public:
-  void AddBus(const string &bus, const vector<string> &stops)
-  {
-    buses_to_stops_[bus] = stops;
-
-    for (auto &stop : stops)
-    {
-      stops_to_buses_[stop].push_back(bus);
-    }
-  }
-
-  BusesForStopResponse GetBusesForStop(const string &stop) const
-  {
-    vector<string> buses_with_stop = {};
-
-    if (stops_to_buses_.count(stop))
-    {
-      buses_with_stop = stops_to_buses_.at(stop);
-    }
-
-    return {stop, buses_with_stop};
-  }
-
-  StopsForBusResponse GetStopsForBus(const string &bus) const
-  {
-    vector<pair<string, vector<string>>> stops_to_buses{};
-
-    if (buses_to_stops_.count(bus))
-    {
-      for (const auto &stop : buses_to_stops_.at(bus))
-      {
-        stops_to_buses.push_back({stop, {}});
-
-        if (stops_to_buses_.count(stop))
-        {
-          for (const auto &stop_bus : stops_to_buses_.at(stop))
-          {
-            stops_to_buses.rbegin()->second.push_back(stop_bus);
-          }
-        }
-      }
-    }
-
-    return {bus, stops_to_buses};
-  }
-
-  AllBusesResponse GetAllBuses() const
-  {
-    return {buses_to_stops_};
-  }
-};
-
-void test_query_type_new_bus_read()
-{
-  Query query{};
-  istringstream input{};
-
-  input.str("NEW_BUS MyBus 4 Stop1 Stop2 Stop3 Stop4"s);
-
-  input >> query;
-
-  assert(query.type == QueryType::NewBus);
-  assert(query.bus == "MyBus"s);
-  assert(query.stops.size() == 4);
-  assert(query.stops[0] == "Stop1"s);
-  assert(query.stops[1] == "Stop2"s);
-  assert(query.stops[2] == "Stop3"s);
-  assert(query.stops[3] == "Stop4"s);
-}
-
-void test_query_type_buses_for_stop_read()
-{
-  Query query{};
-  istringstream input{};
-
-  input.str("BUSES_FOR_STOP MyStop1"s);
-
-  input >> query;
-
-  assert(query.type == QueryType::BusesForStop);
-  assert(query.stop == "MyStop1"s);
-}
-
-void test_query_type_stops_for_bus_read()
-{
-  Query query{};
-  istringstream input{};
-
-  input.str("STOPS_FOR_BUS MyBus1"s);
-
-  input >> query;
-
-  assert(query.type == QueryType::StopsForBus);
-  assert(query.bus == "MyBus1"s);
-}
-
-void test_query_type_all_buses_read()
-{
-  Query query{};
-  istringstream input{};
-
-  input.str("ALL_BUSES"s);
-
-  input >> query;
-
-  assert(query.type == QueryType::AllBuses);
-}
-
-void test_buses_for_stops_response_read()
-{
-  BusesForStopResponse response{"TestStop"s, {"Bus1"s, "Bus2"s}};
-  ostringstream output;
-
-  output << response;
-
-  assert(output.str() == "Bus1 Bus2"s);
-}
-
-void test_buses_for_stops_response_empty()
-{
-  BusesForStopResponse response{"MyStop1", {}};
-  ostringstream output{};
-
-  output << response;
-
-  assert(output.str() == "No stop"s);
-}
-
-void test_stops_for_bus_response_read()
-{
-  StopsForBusResponse response{
-    "Bus2"s,
-    {
-      {"Stop1"s, {"Bus1"s, "Bus2"s}},
-      {"Stop2"s, {"Bus2"s, "Bus3"s}},
-      {"Stop3"s, {"Bus2"s, "Bus3"s, "Bus4"s}},
-    }
-  };
-  ostringstream output{};
-
-  output << response;
-
-  assert(
-    output.str() == (
-      "Stop Stop1: Bus1\n"s
-      +
-      "Stop Stop2: Bus3\n"s
-      +
-      "Stop Stop3: Bus3 Bus4"s
-    )
-  );
-}
-
-void test_stops_for_bus_response_no_interchange()
-{
-  StopsForBusResponse response{
-    "Bus2"s,
-    {
-      {"Stop1"s, {"Bus1"s, "Bus2"s}},
-      {"Stop2"s, {"Bus2"s}},
-      {"Stop3"s, {"Bus2"s, "Bus3"s, "Bus4"s}},
-    }
-  };
-  ostringstream output{};
-
-  output << response;
-
-  auto a = output.str();
-
-  assert(
-    output.str() == (
-      "Stop Stop1: Bus1\n"s
-      +
-      "Stop Stop2: no interchange\n"s
-      +
-      "Stop Stop3: Bus3 Bus4"s
-    )
-  );
-}
-
-void test_stops_for_bus_response_empty()
-{
-  StopsForBusResponse response{"MyBus1", {}};
-  ostringstream output{};
-
-  output << response;
-
-  assert(output.str() == "No bus"s);
-}
-
-void test_all_buses_response_read()
-{
-  AllBusesResponse response{
-    {
-      {"MyBus1", {"Stop1"s, "Stop2"s}},
-      {"MyBus2", {"Stop2"s, "Stop3"s}},
-      {"MyBus3", {"Stop3"s, "Stop4"s}},
-    }
-  };
-  ostringstream output{};
-
-  output << response;
-
-  assert(
-    output.str() == (
-      "Bus MyBus1: Stop1 Stop2\n"s
-      +
-      "Bus MyBus2: Stop2 Stop3\n"s
-      +
-      "Bus MyBus3: Stop3 Stop4"s
-    )
-  );
-}
-
-void test_all_buses_response_empty()
-{
-  AllBusesResponse response{};
-  ostringstream output{};
-
-  output << response;
-
-  assert(output.str() == "No buses"s);
-}
-
-// Не меняя тела функции main, реализуйте функции и классы выше
-
-int main()
-{
-  test_query_type_new_bus_read();
-  test_query_type_buses_for_stop_read();
-  test_query_type_stops_for_bus_read();
-  test_query_type_all_buses_read();
-
-  test_buses_for_stops_response_read();
-  test_buses_for_stops_response_empty();
-
-  test_stops_for_bus_response_read();
-  test_stops_for_bus_response_no_interchange();
-  test_stops_for_bus_response_empty();
-
-  test_all_buses_response_read();
-  test_all_buses_response_empty();
-
-  int query_count;
-  Query q;
-
-  cin >> query_count;
-
-  BusManager bm;
-  for (int i = 0; i < query_count; ++i)
-  {
-    cin >> q;
-    switch (q.type)
-    {
-      case QueryType::NewBus:
-        bm.AddBus(q.bus, q.stops);
-        break;
-      case QueryType::BusesForStop:
-        cout << bm.GetBusesForStop(q.stop) << endl;
-        break;
-      case QueryType::StopsForBus:
-        cout << bm.GetStopsForBus(q.bus) << endl;
-        break;
-      case QueryType::AllBuses:
-        cout << bm.GetAllBuses() << endl;
-        break;
-    }
-  }
+// Функция TestSearchServer является точкой входа для запуска тестов
+void TestSearchServer() {
+  TestExcludeStopWordsFromAddedDocumentContent();
+  TestRemovedDocumentIfMatchMinusWord();
+  TestMatchedWords();
+  TestRatingWords();
+  TestSortedByRelevanceWords();
+  TestFilteredByUserWords();
+  TestCalculatedRelevance();
 }
