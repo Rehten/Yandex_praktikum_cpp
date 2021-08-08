@@ -11,9 +11,9 @@
 #include <vector>
 #include <deque>
 
-using namespace std;
+#include "document.h"
 
-const int MAX_RESULT_DOCUMENT_COUNT = 5;
+using namespace std;
 
 string ReadLine()
 {
@@ -56,20 +56,6 @@ vector<string> SplitIntoWords(const string &text)
 
   return words;
 }
-
-struct Document
-  {
-  Document() = default;
-
-  Document(int id, double relevance, int rating)
-  : id(id), relevance(relevance), rating(rating)
-  {
-  }
-
-  int id = 0;
-  double relevance = 0.0;
-  int rating = 0;
-  };
 
 template<typename StringContainer>
 set<string> MakeUniqueNonEmptyStrings(const StringContainer &strings)
@@ -145,9 +131,9 @@ class SearchServer
           return lhs.relevance > rhs.relevance;
         }
       });
-      if (matched_documents.size() > MAX_RESULT_DOCUMENT_COUNT)
+      if (matched_documents.size() > MaxResultDocumentCount)
       {
-        matched_documents.resize(MAX_RESULT_DOCUMENT_COUNT);
+        matched_documents.resize(MaxResultDocumentCount);
       }
 
       return matched_documents;
@@ -212,6 +198,9 @@ class SearchServer
         int rating;
         DocumentStatus status;
       };
+
+    static const int MaxResultDocumentCount = 5;
+
     const set<string> stop_words_;
     map<string, map<int, double>> word_to_document_freqs_;
     map<int, DocumentData> documents_;
@@ -415,71 +404,71 @@ ostream &operator << (ostream &os, vector<Document> page)
 
 
 class RequestQueue
-{
-public:
-  explicit RequestQueue(const SearchServer &search_server) : search_server_(search_server)
-  {}
-
-  // сделаем "обёртки" для всех методов поиска, чтобы сохранять результаты для нашей статистики
-  template<typename DocumentPredicate>
-  vector<Document> AddFindRequest(const string &raw_query, DocumentPredicate document_predicate)
   {
-    vector<Document> response = search_server_.FindTopDocuments(raw_query, document_predicate);
-
-    UpdateRequests({response.size()});
-
-    return response;
-  }
-
-  vector<Document> AddFindRequest(const string &raw_query, DocumentStatus status)
-  {
-    vector<Document> response = search_server_.FindTopDocuments(raw_query, status);
-
-    UpdateRequests({response.size()});
-
-    return response;
-  }
-
-  vector<Document> AddFindRequest(const string &raw_query)
-  {
-    vector<Document> response = search_server_.FindTopDocuments(raw_query);
-
-    UpdateRequests({response.size()});
-
-    return response;
-  }
-
-  int GetNoResultRequests() const
-  {
-
-    return count_if(requests_.rbegin(), requests_.rend(), [](QueryResult rslt) -> bool {
-      return !rslt.founded;
-    });
-  }
-
-private:
-  struct QueryResult
-  {
-    // определите, что должно быть в структуре
-    QueryResult(size_t fndd): founded(fndd)
+  public:
+    explicit RequestQueue(const SearchServer &search_server) : search_server_(search_server)
     {}
-    size_t founded;
-  };
-  deque<QueryResult> requests_;
-  const static int sec_in_day_ = 1440;
-  // возможно, здесь вам понадобится что-то ещё
-  const SearchServer &search_server_;
 
-  void UpdateRequests(QueryResult queryResult)
-  {
-    requests_.push_back(queryResult);
-
-    if (requests_.size() > sec_in_day_)
+    // сделаем "обёртки" для всех методов поиска, чтобы сохранять результаты для нашей статистики
+    template<typename DocumentPredicate>
+    vector<Document> AddFindRequest(const string &raw_query, DocumentPredicate document_predicate)
     {
-      requests_.pop_front();
+      vector<Document> response = search_server_.FindTopDocuments(raw_query, document_predicate);
+
+      UpdateRequests({response.size()});
+
+      return response;
     }
-  }
-};
+
+    vector<Document> AddFindRequest(const string &raw_query, DocumentStatus status)
+    {
+      vector<Document> response = search_server_.FindTopDocuments(raw_query, status);
+
+      UpdateRequests({response.size()});
+
+      return response;
+    }
+
+    vector<Document> AddFindRequest(const string &raw_query)
+    {
+      vector<Document> response = search_server_.FindTopDocuments(raw_query);
+
+      UpdateRequests({response.size()});
+
+      return response;
+    }
+
+    int GetNoResultRequests() const
+    {
+
+      return count_if(requests_.rbegin(), requests_.rend(), [](QueryResult rslt) -> bool {
+        return !rslt.founded;
+      });
+    }
+
+  private:
+    struct QueryResult
+      {
+      // определите, что должно быть в структуре
+      QueryResult(size_t fndd): founded(fndd)
+      {}
+      size_t founded;
+      };
+    deque<QueryResult> requests_;
+    const static int sec_in_day_ = 1440;
+    // возможно, здесь вам понадобится что-то ещё
+    const SearchServer &search_server_;
+
+    void UpdateRequests(QueryResult queryResult)
+    {
+      requests_.push_back(queryResult);
+
+      if (requests_.size() > sec_in_day_)
+      {
+        requests_.pop_front();
+      }
+    }
+  };
 
 int main() {
   SearchServer search_server("and in at"s);
