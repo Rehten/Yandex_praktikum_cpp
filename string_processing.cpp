@@ -1,5 +1,3 @@
-#pragma once
-
 #include "string_processing.h"
 
 using std::set;
@@ -32,19 +30,3 @@ vector<string> SplitIntoWords(const string &text)
 
   return words;
 }
-
-template<typename StringContainer>
-set<string> MakeUniqueNonEmptyStrings(const StringContainer &strings)
-{
-  set<string> non_empty_strings;
-  for (const string &str : strings)
-  {
-    if (!str.empty())
-    {
-      non_empty_strings.insert(str);
-    }
-  }
-  return non_empty_strings;
-}
-
-template set<string> MakeUniqueNonEmptyStrings<vector<string>>(const vector<string> &strings);
