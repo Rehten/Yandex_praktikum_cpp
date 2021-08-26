@@ -1,7 +1,9 @@
 #include "log_duration.h"
 
+using Clock = std::chrono::steady_clock;
+
 LogDuration::LogDuration(const std::string &id, std::ostream &ostream = std::cerr)
-  : id_(id)
+  : id_(id), start_time_(::Clock::now()), os_(ostream)
 {
 }
 
@@ -12,7 +14,5 @@ LogDuration::~LogDuration()
 
   const auto end_time = Clock::now();
   const auto dur = end_time - start_time_;
-  std::cerr << id_ << ": "s << duration_cast<milliseconds>(dur).count() << " ms"s << std::endl;
+  os_ << id_ << ": "s << duration_cast<milliseconds>(dur).count() << " ms"s << std::endl;
 }
-
-const Clock::time_point LogDuration::start_time_ = Clock::now();
