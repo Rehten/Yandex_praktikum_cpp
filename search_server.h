@@ -8,6 +8,7 @@
 #include "read_input_functions.h"
 #include "string_processing.h"
 #include "paginator.h"
+#include "log_duration.h"
 
 class SearchServer
 {
@@ -30,6 +31,9 @@ public:
   template<typename DocumentPredicate>
   std::vector<Document> FindTopDocuments(const std::string &raw_query, DocumentPredicate document_predicate) const
   {
+    using namespace std::literals;
+
+    LOG_DURATION_STREAM("Operation time"s, std::cout);
     const auto query = ParseQuery(raw_query);
 
     auto matched_documents = FindAllDocuments(query, document_predicate);
