@@ -1,4 +1,3 @@
-#pragma once
 #include "read_input_functions.h"
 
 using std::string;

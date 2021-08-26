@@ -1,5 +1,3 @@
-#pragma once
-
 #include <algorithm>
 
 #include "request_queue.h"
