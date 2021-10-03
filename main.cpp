@@ -1,91 +1,46 @@
-#include <cassert>
+#include <algorithm>
 #include <iostream>
-#include <map>
-#include <set>
-#include <sstream>
 #include <string>
+
+#include "document.h"
+#include "request_queue.h"
+#include "remove_duplicates.h"
 
 using namespace std;
 
-class Synonyms {
-public:
-  void Add(const string& first_word, const string& second_word) {
-    synonyms_[first_word].insert(second_word);
-    synonyms_[second_word].insert(first_word);
-  }
-
-  size_t GetSynonymCount(const string& word) const {
-    if (synonyms_.count(word) != 0) {
-      return synonyms_.at(word).size();
-    }
-    return 0;
-  }
-
-  bool AreSynonyms(const string& first_word, const string& second_word) const {
-    return synonyms_.count(first_word)  && synonyms_.at(first_word).count(second_word);
-  }
-
-private:
-  map<string, set<string>> synonyms_;
-};
-
-void TestAddingSynonymsIncreasesTheirCount() {
-  Synonyms synonyms;
-  assert(synonyms.GetSynonymCount("music"s) == 0);
-  assert(synonyms.GetSynonymCount("melody"s) == 0);
-
-  synonyms.Add("music"s, "melody"s);
-  assert(synonyms.GetSynonymCount("music"s) == 1);
-  assert(synonyms.GetSynonymCount("melody"s) == 1);
-
-  synonyms.Add("music"s, "tune"s);
-  assert(synonyms.GetSynonymCount("music"s) == 2);
-  assert(synonyms.GetSynonymCount("tune"s) == 1);
-  assert(synonyms.GetSynonymCount("melody"s) == 1);
-}
-
-void TestAreSynonyms() {
-  Synonyms synonyms;
-
-  synonyms.Add("music"s, "melody"s);
-
-  assert(synonyms.AreSynonyms("music"s, "melody"s));
-}
-
-void TestSynonyms() {
-  TestAddingSynonymsIncreasesTheirCount();
-  TestAreSynonyms();
+void AddDocument(SearchServer &search_server, int document_id, string s, DocumentStatus status, vector<int> rating)
+{
+  search_server.AddDocument(document_id, s, status, rating);
 }
 
 int main() {
-  TestSynonyms();
+  SearchServer search_server("and with"s);
 
-  Synonyms synonyms;
+  AddDocument(search_server, 1, "funny pet and nasty rat"s, DocumentStatus::ACTUAL, {7, 2, 7});
+  AddDocument(search_server, 2, "funny pet with curly hair"s, DocumentStatus::ACTUAL, {1, 2});
 
-  string line;
-  while (getline(cin, line)) {
-    istringstream command(line);
-    string action;
-    command >> action;
+  // дубликат документа 2, будет удалён
+  AddDocument(search_server, 3, "funny pet with curly hair"s, DocumentStatus::ACTUAL, {1, 2});
 
-    if (action == "ADD"s) {
-      string first_word, second_word;
-      command >> first_word >> second_word;
-      synonyms.Add(first_word, second_word);
-    } else if (action == "COUNT"s) {
-      string word;
-      command >> word;
-      cout << synonyms.GetSynonymCount(word) << endl;
-    } else if (action == "CHECK"s) {
-      string first_word, second_word;
-      command >> first_word >> second_word;
-      if (synonyms.AreSynonyms(first_word, second_word)) {
-        cout << "YES"s << endl;
-      } else {
-        cout << "NO"s << endl;
-      }
-    } else if (action == "EXIT"s) {
-      break;
-    }
-  }
+  // отличие только в стоп-словах, считаем дубликатом
+  AddDocument(search_server, 4, "funny pet and curly hair"s, DocumentStatus::ACTUAL, {1, 2});
+
+  // множество слов такое же, считаем дубликатом документа 1
+  AddDocument(search_server, 5, "funny funny pet and nasty nasty rat"s, DocumentStatus::ACTUAL, {1, 2});
+
+  // добавились новые слова, дубликатом не является
+  AddDocument(search_server, 6, "funny pet and not very nasty rat"s, DocumentStatus::ACTUAL, {1, 2});
+
+  // множество слов такое же, как в id 6, несмотря на другой порядок, считаем дубликатом
+  AddDocument(search_server, 7, "very nasty rat and not very funny pet"s, DocumentStatus::ACTUAL, {1, 2});
+
+  // есть не все слова, не является дубликатом
+  AddDocument(search_server, 8, "pet with rat and rat and rat"s, DocumentStatus::ACTUAL, {1, 2});
+
+  // слова из разных документов, не является дубликатом
+  AddDocument(search_server, 9, "nasty rat with curly hair"s, DocumentStatus::ACTUAL, {1, 2});
+
+  cout << "Before duplicates removed: "s << search_server.GetDocumentCount() << endl;
+  RemoveDuplicates(search_server);
+  cout << "After duplicates removed: "s << search_server.GetDocumentCount() << endl;
 }
