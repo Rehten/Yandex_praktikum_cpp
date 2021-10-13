@@ -1,91 +1,88 @@
 #include <cassert>
 #include <iostream>
-#include <map>
-#include <set>
-#include <sstream>
 #include <string>
+#include <vector>
+
+#include "octopus.h"
 
 using namespace std;
 
-class Synonyms {
-public:
-  void Add(const string& first_word, const string& second_word) {
-    synonyms_[first_word].insert(second_word);
-    synonyms_[second_word].insert(first_word);
-  }
-
-  size_t GetSynonymCount(const string& word) const {
-    if (synonyms_.count(word) != 0) {
-      return synonyms_.at(word).size();
-    }
-    return 0;
-  }
-
-  bool AreSynonyms(const string& first_word, const string& second_word) const {
-    return synonyms_.count(first_word)  && synonyms_.at(first_word).count(second_word);
-  }
-
-private:
-  map<string, set<string>> synonyms_;
-};
-
-void TestAddingSynonymsIncreasesTheirCount() {
-  Synonyms synonyms;
-  assert(synonyms.GetSynonymCount("music"s) == 0);
-  assert(synonyms.GetSynonymCount("melody"s) == 0);
-
-  synonyms.Add("music"s, "melody"s);
-  assert(synonyms.GetSynonymCount("music"s) == 1);
-  assert(synonyms.GetSynonymCount("melody"s) == 1);
-
-  synonyms.Add("music"s, "tune"s);
-  assert(synonyms.GetSynonymCount("music"s) == 2);
-  assert(synonyms.GetSynonymCount("tune"s) == 1);
-  assert(synonyms.GetSynonymCount("melody"s) == 1);
-}
-
-void TestAreSynonyms() {
-  Synonyms synonyms;
-
-  synonyms.Add("music"s, "melody"s);
-
-  assert(synonyms.AreSynonyms("music"s, "melody"s));
-}
-
-void TestSynonyms() {
-  TestAddingSynonymsIncreasesTheirCount();
-  TestAreSynonyms();
-}
-
 int main() {
-  TestSynonyms();
+    // Проверка конструирования осьминогов
+    {
+        // По умолчанию осьминог имеет 8 щупалец
+        Octopus default_octopus;
+        assert(default_octopus.GetTentacleCount() == 8);
 
-  Synonyms synonyms;
+        // Осьминог может иметь отличное от 8 количество щупалец
+        Octopus quadropus(4);
+        assert(quadropus.GetTentacleCount() == 4);
 
-  string line;
-  while (getline(cin, line)) {
-    istringstream command(line);
-    string action;
-    command >> action;
-
-    if (action == "ADD"s) {
-      string first_word, second_word;
-      command >> first_word >> second_word;
-      synonyms.Add(first_word, second_word);
-    } else if (action == "COUNT"s) {
-      string word;
-      command >> word;
-      cout << synonyms.GetSynonymCount(word) << endl;
-    } else if (action == "CHECK"s) {
-      string first_word, second_word;
-      command >> first_word >> second_word;
-      if (synonyms.AreSynonyms(first_word, second_word)) {
-        cout << "YES"s << endl;
-      } else {
-        cout << "NO"s << endl;
-      }
-    } else if (action == "EXIT"s) {
-      break;
+        // И даже вообще не иметь щупалец
+        Octopus coloboque(0);
+        assert(coloboque.GetTentacleCount() == 0);
     }
-  }
+
+    // Осьминогу можно добавлять щупальца
+    // Раскомментируйте код, после того как реализуете метод AddTentacle
+    /*
+    {
+        Octopus octopus(1);
+        Tentacle* t0 = &octopus.GetTentacle(0);
+        Tentacle* t1 = &octopus.AddTentacle();
+        assert(octopus.GetTentacleCount() == 2);
+        Tentacle* t2 = &octopus.AddTentacle();
+        assert(octopus.GetTentacleCount() == 3);
+
+        // После добавления щупалец ранее созданные щупальца не меняют своих адресов
+        assert(&octopus.GetTentacle(0) == t0);
+        assert(&octopus.GetTentacle(1) == t1);
+        assert(&octopus.GetTentacle(2) == t2);
+
+        for (int i = 0; i < octopus.GetTentacleCount(); ++i) {
+            assert(octopus.GetTentacle(i).GetId() == i + 1);
+        }
+    }
+    */
+
+    // Осьминоги могут прицепляться к щупальцам друг друга
+    {
+        Octopus male(2);
+        Octopus female(2);
+
+        assert(male.GetTentacle(0).GetLinkedTentacle() == nullptr);
+
+        male.GetTentacle(0).LinkTo(female.GetTentacle(1));
+        assert(male.GetTentacle(0).GetLinkedTentacle() == &female.GetTentacle(1));
+
+        male.GetTentacle(0).Unlink();
+        assert(male.GetTentacle(0).GetLinkedTentacle() == nullptr);
+    }
+
+    // Копия осьминога имеет свою собственную копию щупалец, которые
+    // копируют состояние щупалец оригинального осьминога
+    {
+        // Перебираем осьминогов с разным количеством щупалец
+        for (int num_tentacles = 0; num_tentacles < 10; ++num_tentacles) {
+            Octopus male(num_tentacles);
+            Octopus female(num_tentacles);
+            // Пусть они хватают друг друга за щупальца
+            for (int i = 0; i < num_tentacles; ++i) {
+                male.GetTentacle(i).LinkTo(female.GetTentacle(num_tentacles - 1 - i));
+            }
+
+            Octopus male_copy(male);
+            // Проверяем состояние щупалец копии
+            assert(male_copy.GetTentacleCount() == male.GetTentacleCount());
+            for (int i = 0; i < male_copy.GetTentacleCount(); ++i) {
+                // Каждое щупальце копии размещается по адресу, отличному от адреса оригинального щупальца
+                assert(&male_copy.GetTentacle(i) != &male.GetTentacle(i));
+                // Каждое щупальце копии прицепляется к тому же щупальцу, что и оригинальное
+                assert(male_copy.GetTentacle(i).GetLinkedTentacle() == male.GetTentacle(i).GetLinkedTentacle());
+            }
+        }
+        // Если вы видите эту надпись, то разрушение осьминогов, скорее всего,
+        // прошло без неопределённого поведения
+        cout << "Everything is OK"s << endl;
+    }
 }
