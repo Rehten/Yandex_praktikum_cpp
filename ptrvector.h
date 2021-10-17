@@ -1,9 +1,8 @@
-#pragma once
-
 #include <cassert>
 #include <iostream>
 #include <string>
 #include <vector>
+#include <algorithm>
 
 using namespace std;
 
@@ -41,6 +40,17 @@ class PtrVector {
     // Возвращает константную ссылку на вектор указателей
     vector<T*> const& GetItems() const noexcept {
       return items_;
+    }
+
+    PtrVector<T> &operator =(PtrVector<T> &rhs)
+    {
+      if (this != &rhs)
+      {
+        auto rhs_copy(rhs);
+
+        swap(this->items_, rhs_copy.items_);
+      }
+      return *this;
     }
 
   private:
