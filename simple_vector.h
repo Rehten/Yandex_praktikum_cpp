@@ -3,6 +3,7 @@
 #include <cassert>
 #include <stdexcept>
 #include <algorithm>
+#include <utility>
 #include <initializer_list>
 
 #include "array_ptr.h"
@@ -22,8 +23,11 @@ class SimpleVector
 
     SimpleVector() noexcept = default;
 
-    // Создаёт вектор из size элементов, инициализированных значением по умолчанию
-    explicit SimpleVector(size_t size) : SimpleVector(size, 0)
+    SimpleVector(std::pair<size_t, size_t> reserve_capacity): size_(reserve_capacity.first), capacity_(reserve_capacity.second)
+    {}
+
+    // Создаёт вектор из capacity элементов, инициализированных значением по умолчанию
+    explicit SimpleVector(size_t capacity) : SimpleVector(capacity, 0)
     {}
 
     // Создаёт вектор из size элементов, инициализированных значением value
@@ -40,29 +44,31 @@ class SimpleVector
     }
 
     // Создаёт вектор из std::initializer_list
-    SimpleVector(std::initializer_list<Type> init): SimpleVector(init.size())
+    SimpleVector(std::initializer_list<Type> init) : SimpleVector(init.size())
     {
-      size_t index {};
+      size_t index{};
 
-      for (const Type &val : init)
+      for (const Type &val: init)
       {
         ptr_.Get()[index] = val;
         ++index;
       }
     }
 
-    SimpleVector(const SimpleVector& other): SimpleVector(other.size_) {
-      std::copy(other.begin(),  other.end(), begin());
+    SimpleVector(const SimpleVector &other) : SimpleVector(other.size_)
+    {
+      std::copy(other.begin(), other.end(), begin());
     }
 
-    SimpleVector& operator=(const SimpleVector& rhs) {
+    SimpleVector &operator=(const SimpleVector &rhs)
+    {
       // Напишите тело конструктора самостоятельно
       if (this == &rhs)
       {
         return *this;
       }
 
-      SimpleVector<Type> copy (rhs);
+      SimpleVector<Type> copy(rhs);
 
       swap(copy);
 
@@ -71,7 +77,8 @@ class SimpleVector
 
     // Добавляет элемент в конец вектора
     // При нехватке места увеличивает вдвое вместимость вектора
-    void PushBack(const Type& item) {
+    void PushBack(const Type &item)
+    {
       Insert(end(), item);
     }
 
@@ -79,7 +86,8 @@ class SimpleVector
     // Возвращает итератор на вставленное значение
     // Если перед вставкой значения вектор был заполнен полностью,
     // вместимость вектора должна увеличиться вдвое, а для вектора вместимостью 0 стать равной 1
-    Iterator Insert(ConstIterator pos, const Type& value) {
+    Iterator Insert(ConstIterator pos, const Type &value)
+    {
       size_t inserted_index = pos - begin();
 
       if (size_ + 1 <= capacity_)
@@ -94,13 +102,13 @@ class SimpleVector
       }
       else
       {
-        SimpleVector<Type> copy (capacity_ ? capacity_ * 2 : 1);
+        SimpleVector<Type> copy(capacity_ ? capacity_ * 2 : 1);
 
         copy.size_ = size_ + 1;
 
         if (GetSize())
         {
-          size_t moved {};
+          size_t moved{};
 
           for (size_t i = 0; i != copy.size_; ++i)
           {
@@ -124,8 +132,22 @@ class SimpleVector
       return begin() + inserted_index;
     }
 
+    void Reserve(size_t new_capacity)
+    {
+      if (new_capacity > capacity_)
+      {
+        SimpleVector<Type> copy(new_capacity);
+        copy.size_ = size_;
+
+        std::copy(begin(), end(), copy.begin());
+
+        swap(copy);
+      }
+    }
+
     // "Удаляет" последний элемент вектора. Вектор не должен быть пустым
-    void PopBack() noexcept {
+    void PopBack() noexcept
+    {
       // Напишите тело самостоятельно
       if (size_)
       {
@@ -134,10 +156,12 @@ class SimpleVector
     }
 
     // Удаляет элемент вектора в указанной позиции
-    Iterator Erase(ConstIterator pos) {
+    Iterator Erase(ConstIterator pos)
+    {
       // Напишите тело самостоятельно
 
-      for (size_t erased_index = pos - begin(); erased_index != size_ - 1; ++erased_index)
+      --size_;
+      for (size_t erased_index = pos - begin(); erased_index != size_; ++erased_index)
       {
         std::swap(ptr_.Get()[erased_index], ptr_.Get()[erased_index + 1]);
       }
@@ -146,7 +170,8 @@ class SimpleVector
     }
 
     // Обменивает значение с другим вектором
-    void swap(SimpleVector& other) noexcept {
+    void swap(SimpleVector &other) noexcept
+    {
       ptr_.swap(other.ptr_);
       std::swap(capacity_, other.capacity_);
       std::swap(size_, other.size_);
@@ -225,7 +250,7 @@ class SimpleVector
       // Напишите тело самостоятельно
       if (size_ < new_size)
       {
-        SimpleVector<Type> copy (new_size);
+        SimpleVector<Type> copy(new_size);
 
         for (size_t i = 0; i != size_; ++i)
         {
@@ -292,32 +317,43 @@ class SimpleVector
 };
 
 
-template <typename Type>
-inline bool operator==(const SimpleVector<Type>& lhs, const SimpleVector<Type>& rhs) {
+template<typename Type>
+inline bool operator==(const SimpleVector<Type> &lhs, const SimpleVector<Type> &rhs)
+{
   return std::equal(lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
 }
 
-template <typename Type>
-inline bool operator!=(const SimpleVector<Type>& lhs, const SimpleVector<Type>& rhs) {
+template<typename Type>
+inline bool operator!=(const SimpleVector<Type> &lhs, const SimpleVector<Type> &rhs)
+{
   return !(lhs == rhs);
 }
 
-template <typename Type>
-inline bool operator<(const SimpleVector<Type>& lhs, const SimpleVector<Type>& rhs) {
+template<typename Type>
+inline bool operator<(const SimpleVector<Type> &lhs, const SimpleVector<Type> &rhs)
+{
   return std::lexicographical_compare(lhs.begin(), lhs.end(), rhs.begin(), rhs.end());;
 }
 
-template <typename Type>
-inline bool operator<=(const SimpleVector<Type>& lhs, const SimpleVector<Type>& rhs) {
+template<typename Type>
+inline bool operator<=(const SimpleVector<Type> &lhs, const SimpleVector<Type> &rhs)
+{
   return (lhs < rhs) || (lhs == lhs);
 }
 
-template <typename Type>
-inline bool operator>(const SimpleVector<Type>& lhs, const SimpleVector<Type>& rhs) {
+template<typename Type>
+inline bool operator>(const SimpleVector<Type> &lhs, const SimpleVector<Type> &rhs)
+{
   return (rhs < lhs);
 }
 
-template <typename Type>
-inline bool operator>=(const SimpleVector<Type>& lhs, const SimpleVector<Type>& rhs) {
+template<typename Type>
+inline bool operator>=(const SimpleVector<Type> &lhs, const SimpleVector<Type> &rhs)
+{
   return (rhs < lhs) || (rhs == lhs);
+}
+
+std::pair<size_t, size_t> Reserve(size_t n)
+{
+  return {0, n};
 }
