@@ -1,94 +1,162 @@
+#include "simple_vector.h"
+
 #include <cassert>
 #include <iostream>
 #include <numeric>
-#include <vector>
 
 using namespace std;
 
-template <typename RandomIt>
-void MakeJosephusPermutation(RandomIt first, RandomIt last, uint32_t step_size) {
-  vector<typename RandomIt::value_type> pool{};
-
-  for (auto i = first; i != last; ++i)
-  {
-    pool.push_back(move(*i));
-  }
-
-  size_t cur_pos = 0;
-  while (!pool.empty()) {
-    *(first++) = move(pool[cur_pos]);
-    pool.erase(pool.begin() + cur_pos);
-    if (pool.empty()) {
-      break;
+class X {
+  public:
+    X()
+      : X(5) {
     }
-    cur_pos = (cur_pos + step_size - 1) % pool.size();
-  }
-}
+    X(size_t num)
+      : x_(num) {
+    }
+    X(const X& other) = delete;
+    X& operator=(const X& other) = delete;
+    X(X&& other) {
+      x_ = exchange(other.x_, 0);
+    }
+    X& operator=(X&& other) {
+      x_ = exchange(other.x_, 0);
+      return *this;
+    }
+    size_t GetX() const {
+      return x_;
+    }
 
-vector<int> MakeTestVector() {
-  vector<int> numbers(10);
-  iota(begin(numbers), end(numbers), 0);
-  return numbers;
-}
-
-void TestIntVector() {
-  const vector<int> numbers = MakeTestVector();
-  {
-    vector<int> numbers_copy = numbers;
-    MakeJosephusPermutation(begin(numbers_copy), end(numbers_copy), 1);
-    assert(numbers_copy == numbers);
-  }
-  {
-    vector<int> numbers_copy = numbers;
-    MakeJosephusPermutation(begin(numbers_copy), end(numbers_copy), 3);
-    assert(numbers_copy == vector<int>({0, 3, 6, 9, 4, 8, 5, 2, 7, 1}));
-  }
-}
-
-// Это специальный тип, который поможет вам убедиться, что ваша реализация
-// функции MakeJosephusPermutation не выполняет копирование объектов.
-// Сейчас вы, возможно, не понимаете как он устроен, однако мы расскажем
-// об этом далее в нашем курсе
-
-struct NoncopyableInt {
-    int value;
-
-    NoncopyableInt(const NoncopyableInt&) = delete;
-    NoncopyableInt& operator=(const NoncopyableInt&) = delete;
-
-    NoncopyableInt(NoncopyableInt&&) = default;
-    NoncopyableInt& operator=(NoncopyableInt&&) = default;
+  private:
+    size_t x_;
 };
 
-bool operator==(const NoncopyableInt& lhs, const NoncopyableInt& rhs) {
-  return lhs.value == rhs.value;
+SimpleVector<int> GenerateVector(size_t size) {
+  SimpleVector<int> v(size);
+  iota(v.begin(), v.end(), 1);
+  return v;
 }
 
-ostream& operator<<(ostream& os, const NoncopyableInt& v) {
-  return os << v.value;
+void TestTemporaryObjConstructor() {
+  const size_t size = 1000000;
+  cout << "Test with temporary object, copy elision" << endl;
+  SimpleVector<int> moved_vector(GenerateVector(size));
+  assert(moved_vector.GetSize() == size);
+  cout << "Done!" << endl << endl;
 }
 
-void TestAvoidsCopying() {
-  vector<NoncopyableInt> numbers;
-  numbers.push_back({1});
-  numbers.push_back({2});
-  numbers.push_back({3});
-  numbers.push_back({4});
-  numbers.push_back({5});
+void TestTemporaryObjOperator() {
+  const size_t size = 1000000;
+  cout << "Test with temporary object, operator=" << endl;
+  SimpleVector<int> moved_vector;
+  assert(moved_vector.GetSize() == 0);
+  moved_vector = GenerateVector(size);
+  assert(moved_vector.GetSize() == size);
+  cout << "Done!" << endl << endl;
+}
 
-  MakeJosephusPermutation(begin(numbers), end(numbers), 2);
+void TestNamedMoveConstructor() {
+  const size_t size = 1000000;
+  cout << "Test with named object, move constructor" << endl;
+  SimpleVector<int> vector_to_move(GenerateVector(size));
+  assert(vector_to_move.GetSize() == size);
 
-  vector<NoncopyableInt> expected;
-  expected.push_back({1});
-  expected.push_back({3});
-  expected.push_back({5});
-  expected.push_back({4});
-  expected.push_back({2});
+  SimpleVector<int> moved_vector(move(vector_to_move));
+  assert(moved_vector.GetSize() == size);
+  assert(vector_to_move.GetSize() == 0);
+  cout << "Done!" << endl << endl;
+}
 
-  assert(numbers == expected);
+void TestNamedMoveOperator() {
+  const size_t size = 1000000;
+  cout << "Test with named object, operator=" << endl;
+  SimpleVector<int> vector_to_move(GenerateVector(size));
+  assert(vector_to_move.GetSize() == size);
+
+  SimpleVector<int> moved_vector = move(vector_to_move);
+  assert(moved_vector.GetSize() == size);
+  assert(vector_to_move.GetSize() == 0);
+  cout << "Done!" << endl << endl;
+}
+
+void TestNoncopiableMoveConstructor() {
+  const size_t size = 5;
+  cout << "Test noncopiable object, move constructor" << endl;
+  SimpleVector<X> vector_to_move;
+  for (size_t i = 0; i < size; ++i) {
+    vector_to_move.PushBack(X(i));
+  }
+
+  SimpleVector<X> moved_vector = move(vector_to_move);
+  assert(moved_vector.GetSize() == size);
+  assert(vector_to_move.GetSize() == 0);
+
+  for (size_t i = 0; i < size; ++i) {
+    assert(moved_vector[i].GetX() == i);
+  }
+  cout << "Done!" << endl << endl;
+}
+
+void TestNoncopiablePushBack() {
+  const size_t size = 5;
+  cout << "Test noncopiable push back" << endl;
+  SimpleVector<X> v;
+  for (size_t i = 0; i < size; ++i) {
+    v.PushBack(X(i));
+  }
+
+  assert(v.GetSize() == size);
+
+  for (size_t i = 0; i < size; ++i) {
+    assert(v[i].GetX() == i);
+  }
+  cout << "Done!" << endl << endl;
+}
+
+void TestNoncopiableInsert() {
+  const size_t size = 5;
+  cout << "Test noncopiable insert" << endl;
+  SimpleVector<X> v;
+  for (size_t i = 0; i < size; ++i) {
+    v.PushBack(X(i));
+  }
+
+  // в начало
+  v.Insert(v.begin(), X(size + 1));
+  assert(v.GetSize() == size + 1);
+  assert(v.begin()->GetX() == size + 1);
+  // в конец
+  v.Insert(v.end(), X(size + 2));
+  assert(v.GetSize() == size + 2);
+  assert((v.end() - 1)->GetX() == size + 2);
+  // в середину
+  v.Insert(v.begin() + 3, X(size + 3));
+  assert(v.GetSize() == size + 3);
+  assert((v.begin() + 3)->GetX() == size + 3);
+  cout << "Done!" << endl << endl;
+}
+
+void TestNoncopiableErase() {
+  const size_t size = 3;
+  cout << "Test noncopiable erase" << endl;
+  SimpleVector<X> v;
+  for (size_t i = 0; i < size; ++i) {
+    v.PushBack(X(i));
+  }
+
+  auto it = v.Erase(v.begin());
+  assert(it->GetX() == 1);
+  cout << "Done!" << endl << endl;
 }
 
 int main() {
-  TestIntVector();
-  TestAvoidsCopying();
+  TestTemporaryObjConstructor();
+  TestTemporaryObjOperator();
+  TestNamedMoveConstructor();
+  TestNamedMoveOperator();
+  TestNoncopiableMoveConstructor();
+  TestNoncopiablePushBack();
+  TestNoncopiableInsert();
+  TestNoncopiableErase();
+  return 0;
 }

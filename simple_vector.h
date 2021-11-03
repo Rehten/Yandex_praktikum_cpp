@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <algorithm>
 #include <utility>
+#include <iterator>
 #include <initializer_list>
 
 #include "array_ptr.h"
@@ -11,9 +12,8 @@
 template<typename Type>
 class SimpleVector
 {
-    using out_of_range = std::out_of_range;
-
   private:
+    using out_of_range = std::out_of_range;
     ArrayPtr<Type> ptr_;
     size_t size_ = 0;
     size_t capacity_ = 0;
@@ -26,24 +26,21 @@ class SimpleVector
     SimpleVector(std::pair<size_t, size_t> reserve_capacity): size_(reserve_capacity.first), capacity_(reserve_capacity.second)
     {}
 
-    // Создаёт вектор из capacity элементов, инициализированных значением по умолчанию
     explicit SimpleVector(size_t capacity) : SimpleVector(capacity, 0)
     {}
 
-    // Создаёт вектор из size элементов, инициализированных значением value
-    SimpleVector(size_t size, const Type &value) : size_(size), capacity_(size_)
+    SimpleVector(size_t size, Type &&value) : size_(size), capacity_(size_)
     {
       ArrayPtr<Type> ptr(size_);
 
       ptr_.swap(ptr);
-      // Напишите тело конструктора самостоятельно
+
       for (size_t i = 0; i != size_; ++i)
       {
-        ptr_.Get()[i] = value;
+        ptr_.Get()[i] = std::move(value);
       }
     }
 
-    // Создаёт вектор из std::initializer_list
     SimpleVector(std::initializer_list<Type> init) : SimpleVector(init.size())
     {
       size_t index{};
@@ -60,32 +57,35 @@ class SimpleVector
       std::copy(other.begin(), other.end(), begin());
     }
 
-    SimpleVector &operator=(const SimpleVector &rhs)
+    SimpleVector(SimpleVector &&other)  noexcept
     {
-      // Напишите тело конструктора самостоятельно
+      swap(other);
+    }
+
+    SimpleVector &operator=(SimpleVector &&rhs)
+    {
       if (this == &rhs)
       {
         return *this;
       }
 
-      SimpleVector<Type> copy(rhs);
+      SimpleVector<Type> copy(std::move(rhs));
 
       swap(copy);
 
       return *this;
     }
 
-    // Добавляет элемент в конец вектора
-    // При нехватке места увеличивает вдвое вместимость вектора
     void PushBack(const Type &item)
     {
       Insert(end(), item);
     }
 
-    // Вставляет значение value в позицию pos.
-    // Возвращает итератор на вставленное значение
-    // Если перед вставкой значения вектор был заполнен полностью,
-    // вместимость вектора должна увеличиться вдвое, а для вектора вместимостью 0 стать равной 1
+    void PushBack(Type &&item)
+    {
+      Insert(end(), std::move(item));
+    }
+
     Iterator Insert(ConstIterator pos, const Type &value)
     {
       size_t inserted_index = pos - begin();
@@ -132,6 +132,35 @@ class SimpleVector
       return begin() + inserted_index;
     }
 
+    // @TODO: Пока что основная проблема здесь
+    Iterator Insert(ConstIterator pos, Type &&value)
+    {
+      size_t inserted_index = pos - begin();
+
+      // @TODO: доработать копирование
+      if (size_ + 1 > capacity_)
+      {
+        ArrayPtr<Type> copy (capacity_ ? capacity_ * 2 : 1);
+
+        for (size_t i = 0; i != size_; ++i)
+        {
+//          copy.ptr_.Get()[i] = std::move(*(begin() + i));
+        }
+
+        *this = std::move(copy, {});
+      }
+
+      ptr_.Get()[size_] = std::move(value);
+
+      for (size_t i = size_; i != size_ - (end() - pos); --i)
+      {
+        std::swap(ptr_.Get()[i], ptr_.Get()[i - 1]);
+      }
+      ++size_;
+
+      return begin() + inserted_index;
+    }
+
     void Reserve(size_t new_capacity)
     {
       if (new_capacity > capacity_)
@@ -145,7 +174,6 @@ class SimpleVector
       }
     }
 
-    // "Удаляет" последний элемент вектора. Вектор не должен быть пустым
     void PopBack() noexcept
     {
       // Напишите тело самостоятельно
@@ -155,7 +183,6 @@ class SimpleVector
       }
     }
 
-    // Удаляет элемент вектора в указанной позиции
     Iterator Erase(ConstIterator pos)
     {
       // Напишите тело самостоятельно
@@ -169,7 +196,6 @@ class SimpleVector
       return const_cast<Iterator>(pos);
     }
 
-    // Обменивает значение с другим вектором
     void swap(SimpleVector &other) noexcept
     {
       ptr_.swap(other.ptr_);
@@ -177,45 +203,33 @@ class SimpleVector
       std::swap(size_, other.size_);
     }
 
-    // Возвращает количество элементов в массиве
     size_t GetSize() const noexcept
     {
-      // Напишите тело самостоятельно
       return size_;
     }
 
-    // Возвращает вместимость массива
     size_t GetCapacity() const noexcept
     {
-      // Напишите тело самостоятельно
       return capacity_;
     }
 
-    // Сообщает, пустой ли массив
     bool IsEmpty() const noexcept
     {
       return !GetSize();
     }
 
-    // Возвращает ссылку на элемент с индексом index
     Type &operator[](size_t index) noexcept
     {
-      // Напишите тело самостоятельно
       return ptr_.Get()[index];
     }
 
-    // Возвращает константную ссылку на элемент с индексом index
     const Type &operator[](size_t index) const noexcept
     {
-      // Напишите тело самостоятельно
       return ptr_.Get()[index];
     }
 
-    // Возвращает константную ссылку на элемент с индексом index
-    // Выбрасывает исключение std::out_of_range, если index >= size
     Type &At(size_t index)
     {
-      // Напишите тело самостоятельно
       if (index >= size_)
       {
         throw out_of_range("Out of range of vector");
@@ -224,11 +238,8 @@ class SimpleVector
       return (*this)[index];
     }
 
-    // Возвращает константную ссылку на элемент с индексом index
-    // Выбрасывает исключение std::out_of_range, если index >= size
     const Type &At(size_t index) const
     {
-      // Напишите тело самостоятельно
       if (index >= size_)
       {
         throw out_of_range("Out of range of vector");
@@ -237,17 +248,13 @@ class SimpleVector
       return (*this)[index];
     }
 
-    // Обнуляет размер массива, не изменяя его вместимость
     void Clear() noexcept
     {
       Resize(0);
     }
 
-    // Изменяет размер массива.
-    // При увеличении размера новые элементы получают значение по умолчанию для типа Type
     void Resize(size_t new_size)
     {
-      // Напишите тело самостоятельно
       if (size_ < new_size)
       {
         SimpleVector<Type> copy(new_size);
@@ -267,51 +274,34 @@ class SimpleVector
       }
     }
 
-    // Возвращает итератор на начало массива
-    // Для пустого массива может быть равен (или не равен) nullptr
     Iterator begin() noexcept
     {
-      // Напишите тело самостоятельно
       return ptr_.Get();
     }
 
-    // Возвращает итератор на элемент, следующий за последним
-    // Для пустого массива может быть равен (или не равен) nullptr
     Iterator end() noexcept
     {
-      // Напишите тело самостоятельно
       return ptr_.Get() + size_;
     }
 
-    // Возвращает константный итератор на начало массива
-    // Для пустого массива может быть равен (или не равен) nullptr
     ConstIterator begin() const noexcept
     {
       // Напишите тело самостоятельно
       return cbegin();
     }
 
-    // Возвращает итератор на элемент, следующий за последним
-    // Для пустого массива может быть равен (или не равен) nullptr
     ConstIterator end() const noexcept
     {
-      // Напишите тело самостоятельно
       return cend();
     }
 
-    // Возвращает константный итератор на начало массива
-    // Для пустого массива может быть равен (или не равен) nullptr
     ConstIterator cbegin() const noexcept
     {
-      // Напишите тело самостоятельно
       return ptr_.Get();
     }
 
-    // Возвращает итератор на элемент, следующий за последним
-    // Для пустого массива может быть равен (или не равен) nullptr
     ConstIterator cend() const noexcept
     {
-      // Напишите тело самостоятельно
       return ptr_.Get() + size_;
     }
 };
