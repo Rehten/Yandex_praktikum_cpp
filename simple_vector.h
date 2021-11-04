@@ -29,6 +29,9 @@ class SimpleVector
     explicit SimpleVector(size_t capacity) : SimpleVector(capacity, 0)
     {}
 
+    SimpleVector(size_t size, const Type &value): SimpleVector(size, (Type &&)std::move(value))
+    {}
+
     SimpleVector(size_t size, Type &&value) : size_(size), capacity_(size_)
     {
       ArrayPtr<Type> ptr(size_);
@@ -70,6 +73,21 @@ class SimpleVector
       }
 
       SimpleVector<Type> copy(std::move(rhs));
+
+      swap(copy);
+
+      return *this;
+    }
+
+    SimpleVector &operator=(const SimpleVector &rhs)
+    {
+      // Напишите тело конструктора самостоятельно
+      if (this == &rhs)
+      {
+        return *this;
+      }
+
+      SimpleVector<Type> copy(rhs);
 
       swap(copy);
 
