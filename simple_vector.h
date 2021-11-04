@@ -132,31 +132,26 @@ class SimpleVector
       return begin() + inserted_index;
     }
 
-    // @TODO: Пока что основная проблема здесь
     Iterator Insert(ConstIterator pos, Type &&value)
     {
       size_t inserted_index = pos - begin();
 
-      // @TODO: доработать копирование
       if (size_ + 1 > capacity_)
       {
-        ArrayPtr<Type> copy (capacity_ ? capacity_ * 2 : 1);
-
-        for (size_t i = 0; i != size_; ++i)
-        {
-//          copy.ptr_.Get()[i] = std::move(*(begin() + i));
-        }
-
-        *this = std::move(copy, {});
+        Resize(size_ + 1);
       }
-
-      ptr_.Get()[size_] = std::move(value);
-
-      for (size_t i = size_; i != size_ - (end() - pos); --i)
+      else
       {
-        std::swap(ptr_.Get()[i], ptr_.Get()[i - 1]);
+        ++size_;
       }
-      ++size_;
+
+      // @TODO: Пока что основная проблема здесь
+      for (size_t i = (size_ - 1); i > inserted_index; --i)
+      {
+        ptr_.Get()[i] = std::exchange(ptr_.Get()[i - 1], {});
+      }
+
+      ptr_.Get()[inserted_index] = std::move(value);
 
       return begin() + inserted_index;
     }
@@ -176,7 +171,6 @@ class SimpleVector
 
     void PopBack() noexcept
     {
-      // Напишите тело самостоятельно
       if (size_)
       {
         --size_;
@@ -261,7 +255,7 @@ class SimpleVector
 
         for (size_t i = 0; i != size_; ++i)
         {
-          copy.ptr_.Get()[i] = ptr_.Get()[i];
+          copy.ptr_.Get()[i] = std::move(ptr_.Get()[i]);
         }
 
         delete ptr_.Release();
