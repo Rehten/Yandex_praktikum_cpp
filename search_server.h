@@ -5,6 +5,7 @@
 #include <map>
 #include <string>
 #include <algorithm>
+#include <execution>
 
 #include "read_input_functions.h"
 #include "string_processing.h"
@@ -39,24 +40,30 @@ class SearchServer
     void
     AddDocument(int document_id, const std::string &document, DocumentStatus status, const std::vector<int> &ratings);
 
-    template <typename DocumentPredicate>
-    std::vector<Document> FindTopDocuments(const std::string& raw_query, DocumentPredicate document_predicate) const {
+    template<typename DocumentPredicate>
+    std::vector<Document> FindTopDocuments(const std::string &raw_query, DocumentPredicate document_predicate) const
+    {
       using namespace std::literals;
 
       Query query;
-      if (!ParseQuery(raw_query, query)) {
+      if (!ParseQuery(raw_query, query))
+      {
         throw std::invalid_argument("Invalid raw_query"s);
       }
       auto matched_documents = FindAllDocuments(query, document_predicate);
 
-      sort(matched_documents.begin(), matched_documents.end(), [](const Document& lhs, const Document& rhs) {
-        if (std::abs(lhs.relevance - rhs.relevance) < 1e-6) {
+      sort(matched_documents.begin(), matched_documents.end(), [](const Document &lhs, const Document &rhs) {
+        if (std::abs(lhs.relevance - rhs.relevance) < 1e-6)
+        {
           return lhs.rating > rhs.rating;
-        } else {
+        }
+        else
+        {
           return lhs.relevance > rhs.relevance;
         }
       });
-      if (matched_documents.size() > MaxResultDocumentCount) {
+      if (matched_documents.size() > MaxResultDocumentCount)
+      {
         matched_documents.resize(MaxResultDocumentCount);
       }
 
@@ -72,6 +79,27 @@ class SearchServer
     const std::map<std::string, double> &GetWordFrequencies(int document_id) const;
 
     void RemoveDocument(int document_id);
+
+    template<class Policy>
+    void RemoveDocument(Policy exec_strategy, int document_id)
+    {
+      document_ids_.erase(find(document_ids_.begin(), document_ids_.end(), document_id));
+      documents_.erase(document_id);
+
+      std::vector<std::pair<std::string, std::map<int, double>>> word_to_document_freqs {word_to_document_freqs_.begin(),  word_to_document_freqs_.end()};
+
+      std::for_each(
+        exec_strategy,
+        word_to_document_freqs.begin(),
+        word_to_document_freqs.end(),
+        [document_id](std::pair<std::string, std::map<int, double>> &pair) -> void
+        {
+          if (pair.second.count(document_id))
+          {
+            pair.second.erase(document_id);
+          }
+        });
+    }
 
     int GetDocumentCount() const;
 
@@ -133,7 +161,7 @@ class SearchServer
       std::map<int, double> document_to_relevance;
       std::set<std::string> words{};
 
-      for (auto &word : query.plus_words)
+      for (auto &word: query.plus_words)
       {
         if (!stop_words_.count(word))
         {
