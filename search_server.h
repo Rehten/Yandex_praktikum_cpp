@@ -15,6 +15,8 @@
 class SearchServer
 {
   public:
+    static const int MaxResultDocumentCount;
+
     template<typename StringContainer>
     SearchServer(const StringContainer &stop_words)
       : stop_words_(MakeUniqueNonEmptyStrings(stop_words))
@@ -52,7 +54,7 @@ class SearchServer
       }
       auto matched_documents = FindAllDocuments(query, document_predicate);
 
-      sort(matched_documents.begin(), matched_documents.end(), [](const Document &lhs, const Document &rhs) {
+      sort(std::execution::par, matched_documents.begin(), matched_documents.end(), [](const Document &lhs, const Document &rhs) {
         if (std::abs(lhs.relevance - rhs.relevance) < 1e-6)
         {
           return lhs.rating > rhs.rating;
@@ -110,14 +112,48 @@ class SearchServer
     std::tuple<std::vector<std::string>, DocumentStatus>
     MatchDocument(const std::string &raw_query, int document_id) const;
 
+    template<class ExectutionStrategy>
+    std::tuple<std::vector<std::string>, DocumentStatus> MatchDocument(ExectutionStrategy strategy, const std::string &raw_query, int document_id) const
+    {
+      // Empty result by initializing it with default constructed tuple
+      using namespace std::literals;
+
+      Query query;
+      if (!ParseQuery(raw_query, query))
+      {
+        throw std::invalid_argument("Invalid raw query!"s);
+      }
+
+      if (
+        std::find_if(strategy, query.minus_words.begin(),  query.minus_words.end(), [this, document_id](const std::string &word) -> bool
+        {
+          return word_to_document_freqs_.count(word) && word_to_document_freqs_.at(word).count(document_id);
+        }) != query.minus_words.end()
+        )
+      {
+        return {{}, documents_.at(document_id).status};
+      }
+
+      std::vector<std::string> matched_words;
+      matched_words.reserve(query.plus_words.size());
+
+      std::for_each(strategy, query.plus_words.begin(),  query.plus_words.end(), [this, &matched_words, document_id](const std::string &word) -> void
+      {
+        if (word_to_document_freqs_.count(word) && word_to_document_freqs_.at(word).count(document_id))
+        {
+          matched_words.push_back(word);
+        }
+      });
+
+      return {matched_words, documents_.at(document_id).status};
+    }
+
   private:
     struct DocumentData
     {
         int rating;
         DocumentStatus status;
     };
-
-    static const int MaxResultDocumentCount;
 
     const std::set<std::string> stop_words_;
     std::map<std::string, std::map<int, double>> word_to_document_freqs_;

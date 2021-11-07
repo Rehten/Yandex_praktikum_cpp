@@ -13,6 +13,11 @@ vector<vector<Document>> ProcessQueries(
 {
   vector<vector<Document>> rslt{queries.size()};
 
+  for (auto &v : rslt)
+  {
+    v.reserve(SearchServer::MaxResultDocumentCount);
+  }
+
   transform(
     execution::par,
     queries.begin(),
