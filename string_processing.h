@@ -10,11 +10,12 @@ template<typename StringContainer>
 std::set<std::string> MakeUniqueNonEmptyStrings(const StringContainer &strings)
 {
   std::set<std::string> non_empty_strings;
-  for (const std::string &str : strings)
+
+  for (const auto &str : strings)
   {
-    if (!str.empty())
+    if (str.begin() != str.end())
     {
-      non_empty_strings.insert(str);
+      non_empty_strings.insert({str.begin(), str.end()});
     }
   }
   return non_empty_strings;

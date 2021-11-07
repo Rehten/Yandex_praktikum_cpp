@@ -3,6 +3,7 @@
 using std::set;
 using std::vector;
 using std::string;
+using std::string_view;
 
 vector<string> SplitIntoWords(const string &text)
 {

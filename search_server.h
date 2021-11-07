@@ -25,30 +25,31 @@ class SearchServer
       using namespace literals;
       for (auto &word: stop_words_)
       {
-        if (!IsValidWord(word))
+        if (!IsValidWord({word.begin(),  word.end()}))
         {
           throw invalid_argument("Word "s + word + "is invalid"s);
         }
       }
     }
 
-    explicit SearchServer(const std::string &stop_words_text);
-
     const std::set<std::string> &GetStopWords() const
     {
       return stop_words_;
     }
 
+    explicit SearchServer(const std::string_view &stop_words_text);
+    explicit SearchServer(const std::string &stop_words_text);
+
     void
-    AddDocument(int document_id, const std::string &document, DocumentStatus status, const std::vector<int> &ratings);
+    AddDocument(int document_id, const std::string_view &document, DocumentStatus status, const std::vector<int> &ratings);
 
     template<typename DocumentPredicate>
-    std::vector<Document> FindTopDocuments(const std::string &raw_query, DocumentPredicate document_predicate) const
+    std::vector<Document> FindTopDocuments(const std::string_view &raw_query, DocumentPredicate document_predicate) const
     {
       using namespace std::literals;
 
       Query query;
-      if (!ParseQuery(raw_query, query))
+      if (!ParseQuery({raw_query.begin(),  raw_query.end()}, query))
       {
         throw std::invalid_argument("Invalid raw_query"s);
       }
@@ -73,12 +74,12 @@ class SearchServer
       return matched_documents;
     }
 
-    std::vector<Document> FindTopDocuments(const std::string &raw_query, DocumentStatus status) const;
+    std::vector<Document> FindTopDocuments(const std::string_view &raw_query, DocumentStatus status) const;
 
-    std::vector<Document> FindTopDocuments(const std::string &raw_query) const;
+    std::vector<Document> FindTopDocuments(const std::string_view &raw_query) const;
 
     [[nodiscard]]
-    const std::map<std::string, double> &GetWordFrequencies(int document_id) const;
+    const std::map<std::string_view, double> &GetWordFrequencies(int document_id) const;
 
     void RemoveDocument(int document_id);
 
@@ -109,17 +110,17 @@ class SearchServer
 
     std::vector<int>::iterator end();
 
-    std::tuple<std::vector<std::string>, DocumentStatus>
-    MatchDocument(const std::string &raw_query, int document_id) const;
+    std::tuple<std::vector<std::string_view>, DocumentStatus>
+    MatchDocument(const std::string_view &raw_query, int document_id) const;
 
     template<class ExectutionStrategy>
-    std::tuple<std::vector<std::string>, DocumentStatus> MatchDocument(ExectutionStrategy strategy, const std::string &raw_query, int document_id) const
+    std::tuple<std::vector<std::string_view>, DocumentStatus> MatchDocument(ExectutionStrategy strategy, const std::string_view &raw_query, int document_id) const
     {
       // Empty result by initializing it with default constructed tuple
       using namespace std::literals;
 
       Query query;
-      if (!ParseQuery(raw_query, query))
+      if (!ParseQuery(std::string{raw_query.begin(),  raw_query.end()}, query))
       {
         throw std::invalid_argument("Invalid raw query!"s);
       }
@@ -134,7 +135,7 @@ class SearchServer
         return {{}, documents_.at(document_id).status};
       }
 
-      std::vector<std::string> matched_words;
+      std::vector<std::string_view> matched_words;
       matched_words.reserve(query.plus_words.size());
 
       std::for_each(strategy, query.plus_words.begin(),  query.plus_words.end(), [this, &matched_words, document_id](const std::string &word) -> void
