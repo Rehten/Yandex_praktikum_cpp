@@ -91,13 +91,15 @@ tuple<vector<string_view>, DocumentStatus> SearchServer::MatchDocument(const str
   vector<string_view> matched_words;
   for (const string &word: query.plus_words)
   {
-    if (word_to_document_freqs_.count(word) == 0)
+    if (word_to_document_freqs_.count(word) && word_to_document_freqs_.at(word).count(document_id))
     {
-      continue;
-    }
-    if (word_to_document_freqs_.at(word).count(document_id))
-    {
-      matched_words.push_back(word);
+      if (!saved_documents_.count(word))
+      {
+        auto str = string{word.begin(),  word.end()};
+        saved_documents_[str] = str;
+      }
+
+      matched_words.push_back(saved_documents_[word]);
     }
   }
 

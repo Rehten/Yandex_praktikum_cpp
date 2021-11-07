@@ -3,6 +3,7 @@
 #include <vector>
 #include <set>
 #include <map>
+#include <unordered_map>
 #include <string>
 #include <algorithm>
 #include <execution>
@@ -142,6 +143,12 @@ class SearchServer
       {
         if (word_to_document_freqs_.count(word) && word_to_document_freqs_.at(word).count(document_id))
         {
+          if (!saved_documents_.count(word))
+          {
+            auto str = std::string{word.begin(),  word.end()};
+            saved_documents_[str] = str;
+          }
+
           matched_words.push_back(word);
         }
       });
@@ -159,6 +166,7 @@ class SearchServer
     const std::set<std::string> stop_words_;
     std::map<std::string, std::map<int, double>> word_to_document_freqs_;
     std::map<int, DocumentData> documents_;
+    mutable std::map<std::string, std::string> saved_documents_;
     std::vector<int> document_ids_;
 
     static bool IsValidWord(const std::string &word);
