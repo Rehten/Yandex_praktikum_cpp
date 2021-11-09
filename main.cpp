@@ -1,45 +1,122 @@
-#include "search_server.h"
-#include "process_queries.h"
-
+#include <functional>
 #include <iostream>
-#include <string>
-#include <vector>
+#include <map>
+#include <set>
+#include <sstream>
+#include <future>
+#include <utility>
+#include <numeric>
 
 using namespace std;
 
+vector<string> SplitIntoWords(const string &text)
+{
+  vector<string> words;
+  string word;
+  for (const char c : text)
+  {
+    if (c == ' ')
+    {
+      if (!word.empty())
+      {
+        words.push_back(word);
+        word.clear();
+      }
+    }
+    else
+    {
+      word += c;
+    }
+  }
+  if (!word.empty())
+  {
+    words.push_back(word);
+  }
+
+  return words;
+}
+
+struct Stats {
+    map<string, int> word_frequences;
+
+    void operator+=(const Stats& other) {
+      for (auto &pr : other.word_frequences)
+      {
+        if (word_frequences.count(pr.first))
+        {
+          word_frequences[pr.first] += pr.second;
+        }
+        else
+        {
+          word_frequences[pr.first] = pr.second;
+        }
+      }
+    }
+};
+
+using KeyWords = set<string, less<>>;
+
+Stats ExploreKeyWords(const KeyWords& key_words, istream& input) {
+  string input_content;
+  vector<vector<string>> lines{};
+
+  input_content.reserve(100);
+
+  while (input)
+  {
+    input_content += static_cast<char>(input.get());
+
+    if (input_content[input_content.size() - 1] == '\n')
+    {
+      lines.push_back(SplitIntoWords(input_content));
+      input_content = ""s;
+    }
+  }
+
+  Stats rslt{};
+  vector<Stats> stats_collection{lines.size()};
+
+  for (auto &word : key_words)
+  {
+    rslt.word_frequences[word];
+  }
+
+  for (size_t i = 0; i != stats_collection.size(); ++i)
+  {
+    Stats async{};
+
+    for (auto &word : lines[i])
+    {
+      if (rslt.word_frequences.count(word))
+      {
+        ++async.word_frequences[word];
+      }
+    }
+
+    stats_collection[i] = async;
+  }
+
+  for (size_t i = 0; i != stats_collection.size(); ++i)
+  {
+    rslt += stats_collection[i];
+  }
+
+  return rslt;
+}
+
 int main() {
-  SearchServer search_server("and with"s);
+  const KeyWords key_words = {"yangle", "rocks", "sucks", "all"};
 
-  int id = 0;
-  for (
-    const string& text : {
-    "funny pet and nasty rat"s,
-    "funny pet with curly hair"s,
-    "funny pet and not very nasty rat"s,
-    "pet with rat and rat and rat"s,
-    "nasty rat with curly hair"s,
+  stringstream ss;
+  ss << "this new yangle service really rocks\n";
+  ss << "It sucks when yangle isn't available\n";
+  ss << "10 reasons why yangle is the best IT company\n";
+  ss << "yangle rocks others suck\n";
+  ss << "Goondex really sucks, but yangle rocks. Use yangle\n";
+
+  for (const auto& [word, frequency] : ExploreKeyWords(key_words, ss).word_frequences) {
+    cout << word << " " << frequency << endl;
   }
-    ) {
-    search_server.AddDocument(++id, text, DocumentStatus::ACTUAL, {1, 2});
-  }
-
-  const string query = "curly and funny"s;
-
-  auto report = [&search_server, &query] {
-    cout << search_server.GetDocumentCount() << " documents total, "s
-         << search_server.FindTopDocuments(query).size() << " documents for query ["s << query << "]"s << endl;
-  };
-
-  report();
-  // однопоточная версия
-  search_server.RemoveDocument(5);
-  report();
-  // однопоточная версия
-  search_server.RemoveDocument(execution::seq, 1);
-  report();
-  // многопоточная версия
-  search_server.RemoveDocument(execution::par, 2);
-  report();
 
   return 0;
 }
