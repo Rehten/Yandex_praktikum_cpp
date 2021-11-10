@@ -1,122 +1,95 @@
-#include <functional>
+#include <algorithm>
+#include <execution>
 #include <iostream>
-#include <map>
-#include <set>
-#include <sstream>
+#include <string>
+#include <string_view>
+#include <vector>
 #include <future>
-#include <utility>
-#include <numeric>
 
 using namespace std;
 
-vector<string> SplitIntoWords(const string &text)
-{
-  vector<string> words;
-  string word;
-  for (const char c : text)
+template <typename Strategy, typename ForwardRange, typename Function>
+void ForEach(Strategy, ForwardRange& range, Function function) {
+  size_t range_size = range.size();
+  size_t tasks_count {};
+
+  if (range_size < 20 || is_same_v<Strategy, execution::sequenced_policy>)
   {
-    if (c == ' ')
-    {
-      if (!word.empty())
-      {
-        words.push_back(word);
-        word.clear();
-      }
-    }
-    else
-    {
-      word += c;
-    }
+    tasks_count = 1;
+
+    for_each(execution::seq, range.begin(), range.end(), function);
+
+    return;
   }
-  if (!word.empty())
+  else if (range_size < 100)
   {
-    words.push_back(word);
+    tasks_count = 2;
+  }
+  else if (range_size < 1000)
+  {
+    tasks_count = 3;
+  }
+  else if (range_size < 10000)
+  {
+    tasks_count = 4;
+  }
+  else
+  {
+    tasks_count = 5;
   }
 
-  return words;
+  vector<future<void>> futures {};
+  vector<typename ForwardRange::iterator> iters {};
+  size_t iters_added{};
+  size_t i{};
+
+  futures.reserve(tasks_count);
+  iters.reserve(tasks_count + 1);
+
+
+  for (auto iter = range.begin(); iter != range.end(); ++iter)
+  {
+    if ((i / (iters_added ? iters_added : 1)) * tasks_count >= range_size)
+    {
+      iters.push_back(iter);
+      ++iters_added;
+    }
+
+    ++i;
+  }
+
+  iters.push_back(range.end());
+
+  for (size_t i = 0; i != tasks_count; ++i)
+  {
+    futures.push_back(async([&iters, i, &function] {
+      for_each(iters[i], iters[i + 1], function);
+    }));
+  }
+
+  for_each(futures.begin(),  futures.end(), [](future<void> &fut) -> void {
+    fut.wait();
+  });
+
 }
 
-struct Stats {
-    map<string, int> word_frequences;
-
-    void operator+=(const Stats& other) {
-      for (auto &pr : other.word_frequences)
-      {
-        if (word_frequences.count(pr.first))
-        {
-          word_frequences[pr.first] += pr.second;
-        }
-        else
-        {
-          word_frequences[pr.first] = pr.second;
-        }
-      }
-    }
-};
-
-using KeyWords = set<string, less<>>;
-
-Stats ExploreKeyWords(const KeyWords& key_words, istream& input) {
-  string input_content;
-  vector<vector<string>> lines{};
-
-  input_content.reserve(100);
-
-  while (input)
-  {
-    input_content += static_cast<char>(input.get());
-
-    if (input_content[input_content.size() - 1] == '\n')
-    {
-      lines.push_back(SplitIntoWords(input_content));
-      input_content = ""s;
-    }
-  }
-
-  Stats rslt{};
-  vector<Stats> stats_collection{lines.size()};
-
-  for (auto &word : key_words)
-  {
-    rslt.word_frequences[word];
-  }
-
-  for (size_t i = 0; i != stats_collection.size(); ++i)
-  {
-    Stats async{};
-
-    for (auto &word : lines[i])
-    {
-      if (rslt.word_frequences.count(word))
-      {
-        ++async.word_frequences[word];
-      }
-    }
-
-    stats_collection[i] = async;
-  }
-
-  for (size_t i = 0; i != stats_collection.size(); ++i)
-  {
-    rslt += stats_collection[i];
-  }
-
-  return rslt;
+template <typename ForwardRange, typename Function>
+void ForEach(ForwardRange& range, Function function) {
+  ForEach(execution::seq, range, function);
 }
 
 int main() {
-  const KeyWords key_words = {"yangle", "rocks", "sucks", "all"};
+  // для итераторов с произвольным доступом тоже должно работать
+  vector<string> strings = {"cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code","cat", "dog", "code",};
 
-  stringstream ss;
-  ss << "this new yangle service really rocks\n";
-  ss << "It sucks when yangle isn't available\n";
-  ss << "10 reasons why yangle is the best IT company\n";
-  ss << "yangle rocks others suck\n";
-  ss << "Goondex really sucks, but yangle rocks. Use yangle\n";
+  ForEach(strings, [](string& s) { reverse(s.begin(), s.end()); });
 
-  for (const auto& [word, frequency] : ExploreKeyWords(key_words, ss).word_frequences) {
-    cout << word << " " << frequency << endl;
+  for (string_view s : strings) {
+    cout << s << " ";
   }
+  cout << endl;
+
+  // вывод: tac god edoc
 
   return 0;
 }
