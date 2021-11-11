@@ -23,14 +23,24 @@ class SimpleVector
 
     SimpleVector() noexcept = default;
 
-    SimpleVector(std::pair<size_t, size_t> reserve_capacity): size_(reserve_capacity.first), capacity_(reserve_capacity.second)
-    {}
+    SimpleVector(std::pair<size_t, size_t> size_capacity)
+    {
+      Reserve(size_capacity.second);
+      Resize(size_capacity.first);
+    }
 
     explicit SimpleVector(size_t capacity) : SimpleVector(capacity, 0)
     {}
 
-    SimpleVector(size_t size, const Type &value): SimpleVector(size, (Type &&)std::move(value))
-    {}
+    SimpleVector(size_t size, const Type &value)
+    {
+      Resize(size_);
+
+      for (size_t i = 0; i != size_; ++i)
+      {
+        ptr_.Get()[i] = value;
+      }
+    }
 
     SimpleVector(size_t size, Type &&value) : size_(size), capacity_(size_)
     {
@@ -40,7 +50,7 @@ class SimpleVector
 
       for (size_t i = 0; i != size_; ++i)
       {
-        ptr_.Get()[i] = std::move(value);
+        ptr_.Get()[i] = static_cast<Type &&>(value);
       }
     }
 
@@ -55,8 +65,12 @@ class SimpleVector
       }
     }
 
-    SimpleVector(const SimpleVector &other) : SimpleVector(other.size_)
+    SimpleVector(const SimpleVector &other)
     {
+      SimpleVector other_copy = other;
+
+      swap(*this, other_copy);
+
       std::copy(other.begin(), other.end(), begin());
     }
 
@@ -275,8 +289,6 @@ class SimpleVector
         {
           copy.ptr_.Get()[i] = std::move(ptr_.Get()[i]);
         }
-
-        delete ptr_.Release();
 
         swap(copy);
       }
