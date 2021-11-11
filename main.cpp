@@ -185,14 +185,15 @@ class SingleLinkedList
       Initialize<const SingleLinkedList<Type> &>(other);
     }
 
-    template<class T>
+    template<typename T>
     void Initialize(T collection)
     {
-      vector<Type> items = {collection.begin(), collection.end()};
+      auto last = before_begin();
 
-      for (auto it = items.rbegin(); it != items.rend(); ++it)
+      for (auto it = collection.begin(); it != collection.end(); ++it)
       {
-        PushFront(*it);
+        InsertAfter(last, *it);
+        ++last;
       }
     }
 
@@ -208,14 +209,8 @@ class SingleLinkedList
     // Обменивает содержимое списков за время O(1)
     void swap(SingleLinkedList &other) noexcept
     {
-      auto *lhs_first = this->head_.next_node;
-
-      this->head_.next_node = other.head_.next_node;
-      other.head_.next_node = lhs_first;
-
-      this->size_ += other.size_;
-      other.size_ = this->size_ - other.size_;
-      this->size_ -= other.size_;
+      std::swap(this->head_.next_node, other.head_.next_node);
+      std::swap(this->size_, other.size_);
     }
 
     ~SingleLinkedList()
@@ -382,29 +377,7 @@ void swap(SingleLinkedList<Type> &lhs, SingleLinkedList<Type> &rhs) noexcept
 template<typename Type>
 bool operator==(const SingleLinkedList<Type> &lhs, const SingleLinkedList<Type> &rhs)
 {
-  if (lhs.GetSize() != rhs.GetSize())
-  {
-    return false;
-  }
-
-  auto size = lhs.GetSize();
-  size_t index = 0;
-  auto lhs_iter = lhs.begin();
-  auto rhs_iter = rhs.begin();
-
-  while (index != size)
-  {
-    if (*lhs_iter != *rhs_iter)
-    {
-      return false;
-    }
-
-    ++index;
-    ++lhs_iter;
-    ++rhs_iter;
-  }
-
-  return true;
+  return std::equal(lhs.begin(),  lhs.end(), rhs.begin(),  rhs.end());
 }
 
 template<typename Type>
@@ -416,29 +389,9 @@ bool operator!=(const SingleLinkedList<Type> &lhs, const SingleLinkedList<Type> 
 template<typename Type>
 bool operator<(const SingleLinkedList<Type> &lhs, const SingleLinkedList<Type> &rhs)
 {
-  if (lhs.GetSize() != rhs.GetSize())
-  {
-    return lhs.GetSize() < rhs.GetSize();
-  }
-
-  auto size = lhs.GetSize();
-  size_t index = 0;
-  auto lhs_iter = lhs.begin();
-  auto rhs_iter = rhs.begin();
-
-  while (index != size)
-  {
-    if (*lhs_iter != *rhs_iter)
-    {
-      return *lhs_iter < *rhs_iter;
-    }
-
-    ++index;
-    ++lhs_iter;
-    ++rhs_iter;
-  }
-
-  return false;
+  return lexicographical_compare(lhs.begin(),  lhs.end(), rhs.begin(),  rhs.end(), [](auto &lhs, auto &rhs) -> bool {
+    return lhs < rhs;
+  });
 }
 
 template<typename Type>
