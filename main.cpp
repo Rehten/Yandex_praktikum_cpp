@@ -38,12 +38,12 @@ class ConcurrentMap {
       {
         if (maps_[i].count(key))
         {
-          return {maps_[i][key], mutexes_[i]};
+          return {maps_[i].at(key), mutexes_[i]};
         }
       }
 
       inc_current_insert();
-      lock_guard<mutex> guard(mutexes_[get_current_insert()]);
+      lock_guard<mutex> guard(mutexes_[prev_current_insert()]);
 
       return {maps_[prev_current_insert()][key], mutexes_[prev_current_insert()]};
     }
@@ -54,6 +54,7 @@ class ConcurrentMap {
 
       for (size_t i = 0; i != maps_.size(); ++i)
       {
+        lock_guard<mutex> guard(mutexes_[i]);
         for (auto iter = maps_[i].begin(); iter != maps_[i].end(); ++iter)
         {
           rslt[iter->first] = iter->second;
