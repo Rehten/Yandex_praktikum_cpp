@@ -5,21 +5,25 @@
 #include <random>
 #include <string>
 #include <vector>
-#include <mutex>
 
 #include "log_duration.h"
 #include "test_runner_p.h"
 
 using namespace std;
-using namespace std::literals;
+using namespace std::string_literals;
 
 template <typename Key, typename Value>
 class ConcurrentMap {
   public:
     static_assert(std::is_integral_v<Key>, "ConcurrentMap supports only integer keys"s);
 
-    struct Access
+    struct DictionaryWithMutes
     {
+        map<Key, Value> dictionary;
+        mutex m;
+    };
+
+    struct Access {
         Value &ref_to_value;
 
         Access(Value &val, mutex &m): ref_to_value(val), guard_(m)
@@ -29,33 +33,29 @@ class ConcurrentMap {
         lock_guard<mutex> guard_;
     };
 
-    explicit ConcurrentMap(size_t bucket_count): mutexes_(bucket_count), maps_(bucket_count)
-    {}
+    explicit ConcurrentMap(size_t bucket_count)
+    {
+      for (uint64_t i = 0; i != static_cast<uint64_t>(bucket_count); ++i)
+      {
+        data_[i] = new DictionaryWithMutes{{}, mutex()};
+      }
+    }
 
     Access operator[](const Key& key)
     {
-      for (size_t i = 0; i != maps_.size(); ++i)
-      {
-        if (maps_[i].count(key))
-        {
-          return {maps_[i].at(key), mutexes_[i]};
-        }
-      }
+      uint64_t index = static_cast<uint64_t>(key) % data_.size();
 
-      inc_current_insert();
-      lock_guard<mutex> guard(mutexes_[prev_current_insert()]);
-
-      return {maps_[prev_current_insert()][key], mutexes_[prev_current_insert()]};
+      return {data_[index].load()->dictionary[key], data_[index].load()->m};
     }
 
     map<Key, Value> BuildOrdinaryMap()
     {
       map<Key, Value> rslt{};
 
-      for (size_t i = 0; i != maps_.size(); ++i)
+      for (uint64_t i = 0; i != static_cast<uint64_t>(data_.size()); ++i)
       {
-        lock_guard<mutex> guard(mutexes_[i]);
-        for (auto iter = maps_[i].begin(); iter != maps_[i].end(); ++iter)
+        lock_guard<mutex> guard(data_[i].load()->m);
+        for (auto iter = data_[i].load()->dictionary.begin(); iter != data_[i].load()->dictionary.end(); ++iter)
         {
           rslt[iter->first] = iter->second;
         }
@@ -65,30 +65,7 @@ class ConcurrentMap {
     }
 
   private:
-    size_t current_insert_ = 0;
-    vector<mutex> mutexes_;
-    vector<map<Key, Value>> maps_;
-
-    size_t prev_current_insert()
-    {
-      return current_insert_ ? current_insert_ - 1 : maps_.size() - 1;
-    }
-
-    size_t get_current_insert()
-    {
-      return current_insert_;
-    }
-
-    void inc_current_insert()
-    {
-      if (current_insert_ + 1 == maps_.size())
-      {
-        current_insert_ = 0;
-        return;
-      }
-
-      ++current_insert_;
-    }
+    map<uint64_t, atomic<DictionaryWithMutes *>> data_;
 };
 
 using namespace std;
