@@ -66,7 +66,7 @@ class SearchServer
       }
       auto matched_documents = FindAllDocuments(query, document_predicate);
 
-      sort(std::execution::par, matched_documents.begin(), matched_documents.end(), [](const Document &lhs, const Document &rhs) {
+      sort(strategy, matched_documents.begin(), matched_documents.end(), [](const Document &lhs, const Document &rhs) {
         if (std::abs(lhs.relevance - rhs.relevance) < 1e-6)
         {
           return lhs.rating > rhs.rating;
