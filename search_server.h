@@ -47,6 +47,16 @@ class SearchServer
     template<typename DocumentPredicate>
     std::vector<Document> FindTopDocuments(const std::string_view &raw_query, DocumentPredicate document_predicate) const
     {
+      return FindTopDocuments(std::execution::seq, raw_query, document_predicate);
+    }
+
+    std::vector<Document> FindTopDocuments(const std::string_view &raw_query, DocumentStatus status) const;
+
+    std::vector<Document> FindTopDocuments(const std::string_view &raw_query) const;
+
+    template<typename DocumentPredicate, typename Strategy>
+    std::vector<Document> FindTopDocuments(Strategy strategy, const std::string_view &raw_query, DocumentPredicate document_predicate) const
+    {
       using namespace std::literals;
 
       Query query;
@@ -75,9 +85,19 @@ class SearchServer
       return matched_documents;
     }
 
-    std::vector<Document> FindTopDocuments(const std::string_view &raw_query, DocumentStatus status) const;
+    template<typename Strategy>
+    std::vector<Document> FindTopDocuments(Strategy strategy, const std::string_view &raw_query, DocumentStatus status) const
+    {
+      return FindTopDocuments(strategy, raw_query, [status](int document_id, DocumentStatus document_status, int rating) {
+        return document_status == status;
+      });
+    }
 
-    std::vector<Document> FindTopDocuments(const std::string_view &raw_query) const;
+    template<typename Strategy>
+    std::vector<Document> FindTopDocuments(Strategy strategy, const std::string_view &raw_query) const
+    {
+      return FindTopDocuments(strategy, raw_query, DocumentStatus::ACTUAL);
+    }
 
     [[nodiscard]]
     const std::map<std::string_view, double> &GetWordFrequencies(int document_id) const;
