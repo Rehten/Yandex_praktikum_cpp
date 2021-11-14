@@ -5,6 +5,7 @@
 #include <random>
 #include <string>
 #include <vector>
+#include <algorithm>
 
 #include "log_duration.h"
 #include "test_runner_p.h"
@@ -33,7 +34,7 @@ class ConcurrentMap {
         lock_guard<mutex> guard_;
     };
 
-    explicit ConcurrentMap(size_t bucket_count)
+    explicit ConcurrentMap(size_t bucket_count): data_(bucket_count)
     {
       for (uint64_t i = 0; i != static_cast<uint64_t>(bucket_count); ++i)
       {
@@ -70,7 +71,7 @@ class ConcurrentMap {
     }
 
   private:
-    map<uint64_t, atomic<DictionaryWithMutes *>> data_;
+    vector<atomic<DictionaryWithMutes *>> data_;
 };
 
 using namespace std;
