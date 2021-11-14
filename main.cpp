@@ -45,7 +45,12 @@ class ConcurrentMap {
     {
       uint64_t index = static_cast<uint64_t>(key) % data_.size();
 
-      return {data_[index].load()->dictionary[key], data_[index].load()->m};
+      {
+        lock_guard<mutex> guard(data_[index].load()->m);
+        data_[index].load()->dictionary[static_cast<uint64_t>(key)];
+      }
+
+      return {data_[index].load()->dictionary.at(static_cast<uint64_t>(key)), data_[index].load()->m};
     }
 
     map<Key, Value> BuildOrdinaryMap()
