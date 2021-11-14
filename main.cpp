@@ -1,91 +1,52 @@
-#include <cassert>
+#include "process_queries.h"
+#include "search_server.h"
+
+#include <execution>
 #include <iostream>
-#include <map>
-#include <set>
-#include <sstream>
 #include <string>
+#include <vector>
 
 using namespace std;
 
-class Synonyms {
-public:
-  void Add(const string& first_word, const string& second_word) {
-    synonyms_[first_word].insert(second_word);
-    synonyms_[second_word].insert(first_word);
-  }
-
-  size_t GetSynonymCount(const string& word) const {
-    if (synonyms_.count(word) != 0) {
-      return synonyms_.at(word).size();
-    }
-    return 0;
-  }
-
-  bool AreSynonyms(const string& first_word, const string& second_word) const {
-    return synonyms_.count(first_word)  && synonyms_.at(first_word).count(second_word);
-  }
-
-private:
-  map<string, set<string>> synonyms_;
-};
-
-void TestAddingSynonymsIncreasesTheirCount() {
-  Synonyms synonyms;
-  assert(synonyms.GetSynonymCount("music"s) == 0);
-  assert(synonyms.GetSynonymCount("melody"s) == 0);
-
-  synonyms.Add("music"s, "melody"s);
-  assert(synonyms.GetSynonymCount("music"s) == 1);
-  assert(synonyms.GetSynonymCount("melody"s) == 1);
-
-  synonyms.Add("music"s, "tune"s);
-  assert(synonyms.GetSynonymCount("music"s) == 2);
-  assert(synonyms.GetSynonymCount("tune"s) == 1);
-  assert(synonyms.GetSynonymCount("melody"s) == 1);
-}
-
-void TestAreSynonyms() {
-  Synonyms synonyms;
-
-  synonyms.Add("music"s, "melody"s);
-
-  assert(synonyms.AreSynonyms("music"s, "melody"s));
-}
-
-void TestSynonyms() {
-  TestAddingSynonymsIncreasesTheirCount();
-  TestAreSynonyms();
+void PrintDocument(const Document& document) {
+  cout << "{ "s
+       << "document_id = "s << document.id << ", "s
+       << "relevance = "s << document.relevance << ", "s
+       << "rating = "s << document.rating << " }"s << endl;
 }
 
 int main() {
-  TestSynonyms();
+  SearchServer search_server("and with"s);
 
-  Synonyms synonyms;
-
-  string line;
-  while (getline(cin, line)) {
-    istringstream command(line);
-    string action;
-    command >> action;
-
-    if (action == "ADD"s) {
-      string first_word, second_word;
-      command >> first_word >> second_word;
-      synonyms.Add(first_word, second_word);
-    } else if (action == "COUNT"s) {
-      string word;
-      command >> word;
-      cout << synonyms.GetSynonymCount(word) << endl;
-    } else if (action == "CHECK"s) {
-      string first_word, second_word;
-      command >> first_word >> second_word;
-      if (synonyms.AreSynonyms(first_word, second_word)) {
-        cout << "YES"s << endl;
-      } else {
-        cout << "NO"s << endl;
-      }
-    } else if (action == "EXIT"s) {
-      break;
-    }
+  int id = 0;
+  for (
+    const string& text : {
+    "white cat and yellow hat"s,
+    "curly cat curly tail"s,
+    "nasty dog with big eyes"s,
+    "nasty pigeon john"s,
   }
+    ) {
+    search_server.AddDocument(++id, text, DocumentStatus::ACTUAL, {1, 2});
+  }
+
+
+  cout << "ACTUAL by default:"s << endl;
+  // последовательная версия
+  for (const Document& document : search_server.FindTopDocuments("curly nasty cat"s)) {
+    PrintDocument(document);
+  }
+  cout << "BANNED:"s << endl;
+  // последовательная версия
+  for (const Document& document : search_server.FindTopDocuments(execution::seq, "curly nasty cat"s, DocumentStatus::BANNED)) {
+    PrintDocument(document);
+  }
+
+  cout << "Even ids:"s << endl;
+  // параллельная версия
+  for (const Document& document : search_server.FindTopDocuments(execution::par, "curly nasty cat"s, [](int document_id, DocumentStatus status, int rating) { return document_id % 2 == 0; })) {
+    PrintDocument(document);
+  }
+
+  return 0;
 }
