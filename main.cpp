@@ -137,6 +137,8 @@ public:
             }
         }
 
+        complete_parks_.clear();
+
         return rslt;
     }
 
