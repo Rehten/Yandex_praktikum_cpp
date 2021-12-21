@@ -161,23 +161,5 @@ private:
   void connect_bus_and_stop(size_t bus_index, size_t stop_index);
   void connect_stop_and_route(size_t stop_index, size_t route_index);
 
-  /**
-   * @brief Удаляет остановку из хранилища, а так же все указатели на нее
-   * @param stop_index Индекс остановки в соответствующем векторе
-   */
-  void remove_stop(size_t stop_index);
-
-  /**
-   * @brief Удаляет автобус и все указатели на него
-   * @param bus_index Индекс автобуса в соответствующем векторе
-   */
-  void remove_bus(size_t bus_index);
-
-  /**
-   * @brief Удаление маршрута, а так же всех упоминаний о нем
-   * @param route_index Индекс маршрута в соответствующем векторе
-   */
-  void remove_route(size_t route_index);
-
   void clear();
 };

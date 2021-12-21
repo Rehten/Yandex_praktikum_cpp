@@ -174,39 +174,6 @@ void TransportCatalogue::connect_stop_and_route(size_t stop_index, size_t route_
   stops_to_routes_.at(stop_index).push_back(route_index);
 }
 
-void TransportCatalogue::remove_stop(size_t stop_index)
-{
-  for (size_t bus_index : stops_to_buses_.at(stop_index))
-  {
-    auto target_vector = buses_to_stops_.at(bus_index);
-
-    for (auto iter = target_vector.begin(); iter != target_vector.end();)
-    {
-      if (*iter == stop_index)
-      {
-        iter = target_vector.erase(iter);
-      }
-      else
-      {
-        ++iter;
-      }
-    }
-  }
-
-  names_to_stops_.erase(stops_[stop_index].name);
-  stops_to_buses_.erase(stop_index);
-  stops_to_routes_.erase(stop_index);
-  stops_.erase(stops_.begin() + static_cast<int>(stop_index));
-}
-
-void TransportCatalogue::remove_bus(size_t bus_index)
-{
-
-}
-
-void TransportCatalogue::remove_route(size_t route_index)
-{}
-
 void TransportCatalogue::clear()
 {
   routes_.clear();
