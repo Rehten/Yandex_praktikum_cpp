@@ -18,13 +18,12 @@ enum DBCommands
 enum OutputCommands
 {
   PrintBus = 100000,
-  PrintStop = 100001,
 };
 
 struct stop
 {
   std::string name;
-  Coordinates coordinates;
+  std::optional<Coordinates> coordinates;
 };
 
 struct bus
@@ -63,9 +62,9 @@ private:
    */
   std::vector<bus> buses_;
   /**
-   * @brief Карта для нахождения остановки по имени. Если остановка запрашивается перед ее созданием, но optional пуст
+   * @brief Карта для нахождения остановки по имени.
    */
-  std::map<std::string_view, std::optional<size_t>> names_to_stops_;
+  std::map<std::string_view, size_t> names_to_stops_;
   /**
    * @brief Карта для связи остановки с автобусами
    */
@@ -95,12 +94,6 @@ public:
   void apply_output_command(const std::string &command);
 private:
   /**
-   * @brief Проверяет, что маршрут является замкнутым
-   * @param bus Автобус, маршрут которого будет проверен
-   * @return true, если первая остановка встречается в маршруте два раза на первой и последней позиции
-   */
-  static bool IsClosedRoute(const Route *route);
-  /**
    * @brief Разбирает исходную строку команды на ключевые слова, которые влияют на последующую обработку
    * @param code Число из @enum DBCommands или из @enum OutputCommands
    * @param command Исходный текст метаданных, в нем отсутствует код команды
@@ -113,7 +106,6 @@ private:
   static std::vector<std::string_view> GetMetadataQueryForAddBus(const std::string_view &command);
   static std::vector<std::string_view> GetMetadataQueryForAddStop(const std::string_view &command);
   static std::vector<std::string_view> GetMetadataQueryForPrintBus(const std::string_view &command);
-  static std::vector<std::string_view> GetMetadataQueryForPrintStop(const std::string_view &command);
 
   /**
    * @brief Возвращает тип команды, а также подстроку, содержащую метаданные по ней для дальнейшей конвертации
