@@ -8,7 +8,6 @@ using namespace literals::string_view_literals;
 void TransportCatalogue::apply_db_command(const string &command)
 {
   pair<DBCommands, string_view> db_parsed_command = GetDBCommandCodeAndQuery(command);
-  vector<string_view> query = GetMetadataQueryByCode(db_parsed_command.first, db_parsed_command.second);
 
   switch (db_parsed_command.first)
   {
@@ -16,7 +15,12 @@ void TransportCatalogue::apply_db_command(const string &command)
       add_bus(BuildBusFrom(MakeBusMetaFrom(db_parsed_command.second)));
       break;
     case DBCommands::AddStop:
-      add_stop(BuildStopFrom(MakeStopMetaFrom(db_parsed_command.second)));
+    {
+      stop added_stop = BuildStopFrom(MakeStopMetaFrom(db_parsed_command.second));
+
+      added_stop.id = ++last_stop_id_;
+      add_stop(move(added_stop));
+    }
       break;
     default:
       throw invalid_command_code();
@@ -31,12 +35,12 @@ void TransportCatalogue::apply_output_command(ostream &output_stream, const stri
   switch (db_command_meta.first)
   {
     case OutputCommands::PrintBus:
-      {
-        size_t bus_id = stoi(string(query[0].begin(),  query[0].end()));
-        size_t printed_bus_id = ids_to_buses_.at(bus_id);
+    {
+      size_t bus_id = stoi(string(query[0].begin(), query[0].end()));
+      size_t printed_bus_id = ids_to_buses_.at(bus_id);
 
-        output_stream << "Bus "s << buses_[printed_bus_id].id << ": not found"s;
-      }
+      output_stream << "Bus "s << buses_[printed_bus_id].id << ": not found"s;
+    }
       break;
     default:
       throw invalid_command_code();
@@ -154,7 +158,7 @@ vector<string_view> TransportCatalogue::GetMetadataQueryForAddStop(const string_
 
 vector<string_view> TransportCatalogue::GetMetadataQueryForPrintBus(const string_view &command)
 {
-  return {{command.begin(),  command.end()}};
+  return {{command.begin(), command.end()}};
 }
 
 pair<DBCommands, string_view> TransportCatalogue::GetDBCommandCodeAndQuery(const string &from)
@@ -207,12 +211,30 @@ pair<OutputCommands, string_view> TransportCatalogue::GetOutputCommandCodeAndQue
 
 BusMeta TransportCatalogue::MakeBusMetaFrom(string_view meta_query)
 {
-  return {static_cast<size_t>(stoi(string(meta_query.begin(),  meta_query.end()))), {}};
+  vector<string_view> splitted_meta_query = GetMetadataQueryByCode(DBCommands::AddBus, meta_query);
+
+  return {
+    static_cast<size_t>(stoi(string(splitted_meta_query[0].begin(),  splitted_meta_query[0].end()))),
+    {splitted_meta_query.begin() + 1,  splitted_meta_query.end()}
+  };
 }
 
 StopMeta TransportCatalogue::MakeStopMetaFrom(string_view meta_query)
 {
-  return StopMeta();
+  vector<string_view> splitted_meta_query = GetMetadataQueryByCode(DBCommands::AddStop, meta_query);
+
+  if (splitted_meta_query.size() < 3)
+  {
+    throw invalid_command();
+  }
+
+  return {
+    {splitted_meta_query[0].begin(), splitted_meta_query[0].end()},
+    Coordinates{
+      stod(string{splitted_meta_query[1].begin(), splitted_meta_query[1].end()}),
+      stod(string{splitted_meta_query[2].begin(), splitted_meta_query[2].end()})
+    }
+  };
 }
 
 bus TransportCatalogue::BuildBusFrom(BusMeta bus_meta)
@@ -256,16 +278,19 @@ void TransportCatalogue::add_bus(const bus &&bus)
 
 void TransportCatalogue::add_route(const route &&route)
 {
+  routes_.push_back(route);
 }
 
 void TransportCatalogue::connect_bus_and_stop(size_t bus_index, size_t stop_index)
 {
-
+  buses_to_stops_[bus_index].push_back(stop_index);
+  stops_to_buses_[stop_index].push_back(bus_index);
 }
 
 void TransportCatalogue::connect_stop_and_route(size_t stop_index, size_t route_index)
 {
-
+  routes_[route_index].stops.push_back(stop_index);
+  stops_to_routes_[stop_index].push_back(route_index);
 }
 
 void TransportCatalogue::clear()
