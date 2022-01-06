@@ -17,11 +17,7 @@ void TransportCatalogue::apply_db_command(const string &command)
       add_bus(BuildBusFrom(MakeBusMetaFrom(db_parsed_command.second)));
       break;
     case DBCommands::AddStop:
-    {
-      stop added_stop = build_stop_from(MakeStopMetaFrom(db_parsed_command.second));
-
-      add_stop(move(added_stop));
-    }
+      add_stop(build_stop_from(MakeStopMetaFrom(db_parsed_command.second)));
       break;
     default:
       throw invalid_command_code();
