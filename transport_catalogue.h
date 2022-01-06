@@ -22,6 +22,7 @@ enum OutputCommands
 
 struct stop
 {
+  size_t id;
   std::string name;
   std::optional<Coordinates> coordinates;
 };
@@ -31,15 +32,17 @@ struct bus
   size_t id;
 };
 
-using Route = std::vector<size_t>;
+struct route
+{
+  size_t id;
+  std::vector<size_t> stops;
+};
 using BusMeta = std::pair<size_t, std::vector<std::string_view>>;
 using StopMeta = std::pair<std::string, Coordinates>;
 
 class TransportCatalogue
 {
 public:
-  struct not_closed_route_exception : public std::exception
-  {};
   struct invalid_command : public std::exception
   {};
   struct invalid_command_code : public std::exception
@@ -49,10 +52,11 @@ public:
   struct empty_command_metadata : public std::exception
   {};
 private:
+  size_t last_stop_id_ = 1;
   /**
    * @brief Здесь хранятся исходники маршрутов.
    */
-  std::vector<Route> routes_;
+  std::vector<route> routes_;
   /**
    * @brief Здесь хранятся исходники остановок.
    */
@@ -89,9 +93,10 @@ public:
   void apply_db_command(const std::string &command);
   /**
    * @brief Применяет команду к целевому справочнику
+   * @param output_stream Поток вывода
    * @param command Код команды с соответствующими данными
    */
-  void apply_output_command(const std::string &command);
+  void apply_output_command(std::ostream &output_stream, const std::string &command);
 private:
   /**
    * @brief Разбирает исходную строку команды на ключевые слова, которые влияют на последующую обработку
@@ -148,7 +153,7 @@ private:
 
   void add_bus(const bus &&bus);
 
-  void add_route(const Route &&route);
+  void add_route(const route &&route);
 
   void connect_bus_and_stop(size_t bus_index, size_t stop_index);
   void connect_stop_and_route(size_t stop_index, size_t route_index);

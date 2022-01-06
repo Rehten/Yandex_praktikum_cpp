@@ -1,3 +1,4 @@
+#include <iostream>
 #include "transport_catalogue.h"
 
 using namespace std;
@@ -6,12 +7,44 @@ using namespace literals::string_view_literals;
 
 void TransportCatalogue::apply_db_command(const string &command)
 {
+  pair<DBCommands, string_view> db_command_meta = GetDBCommandCodeAndQuery(command);
+  vector<string_view> query = GetMetadataQueryByCode(db_command_meta.first, db_command_meta.second);
 
+  switch (db_command_meta.first)
+  {
+    case DBCommands::AddBus:
+      add_bus({
+        static_cast<size_t>(
+            stoi(string(query[0].begin(),  query[0].end()))
+          )
+      });
+      break;
+    case DBCommands::AddStop:
+      add_stop({ ++last_stop_id_ });
+      break;
+    default:
+      throw invalid_command_code();
+  }
 }
 
-void TransportCatalogue::apply_output_command(const string &command)
+void TransportCatalogue::apply_output_command(ostream &output_stream, const string &command)
 {
+  pair<OutputCommands, string_view> db_command_meta = GetOutputCommandCodeAndQuery(command);
+  vector<string_view> query = GetMetadataQueryByCode(db_command_meta.first, db_command_meta.second);
 
+  switch (db_command_meta.first)
+  {
+    case OutputCommands::PrintBus:
+      {
+        size_t bus_id = stoi(string(query[0].begin(),  query[0].end()));
+        size_t printed_bus_id = ids_to_buses_.at(bus_id);
+
+        output_stream << "Bus "s << buses_[printed_bus_id].id << ": not found"s;
+      }
+      break;
+    default:
+      throw invalid_command_code();
+  }
 }
 
 vector<string_view> TransportCatalogue::GetMetadataQueryByCode(size_t code, const string_view &command)
@@ -125,7 +158,7 @@ vector<string_view> TransportCatalogue::GetMetadataQueryForAddStop(const string_
 
 vector<string_view> TransportCatalogue::GetMetadataQueryForPrintBus(const string_view &command)
 {
-  return {command.begin(),  command.end()};
+  return {{command.begin(),  command.end()}};
 }
 
 pair<DBCommands, string_view> TransportCatalogue::GetDBCommandCodeAndQuery(const string &from)
@@ -193,7 +226,7 @@ bus TransportCatalogue::BuildBusFrom(BusMeta bus_meta)
 
 stop TransportCatalogue::BuildStopFrom(StopMeta stop_meta)
 {
-  return stop{stop_meta.first, stop_meta.second};
+  return stop{0, stop_meta.first, stop_meta.second};
 }
 
 pair<string_view, string_view> TransportCatalogue::DivideCommandByCodeAndValue(const string &src)
@@ -216,30 +249,26 @@ pair<string_view, string_view> TransportCatalogue::DivideCommandByCodeAndValue(c
 
 void TransportCatalogue::add_stop(const stop &&stop)
 {
-  stops_.push_back(stop);
+
 }
 
 void TransportCatalogue::add_bus(const bus &&bus)
 {
-  buses_.push_back(bus);
-  ids_to_buses_[bus.id] = buses_.size() - 1;
+
 }
 
-void TransportCatalogue::add_route(const Route &&route)
+void TransportCatalogue::add_route(const route &&route)
 {
-  routes_.push_back(route);
 }
 
 void TransportCatalogue::connect_bus_and_stop(size_t bus_index, size_t stop_index)
 {
-  buses_to_stops_.at(bus_index).push_back(stop_index);
-  stops_to_buses_.at(stop_index).push_back(bus_index);
+
 }
 
 void TransportCatalogue::connect_stop_and_route(size_t stop_index, size_t route_index)
 {
-  routes_.at(route_index).push_back(stop_index);
-  stops_to_routes_.at(stop_index).push_back(route_index);
+
 }
 
 void TransportCatalogue::clear()
