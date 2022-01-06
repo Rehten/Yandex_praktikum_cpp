@@ -137,17 +137,18 @@ private:
 
   static bus BuildBusFrom(BusMeta bus_meta);
   /**
-   * @brief Собирает маршрут из остановок
-   * @param stop_meta Данные, необходимые для конструирования остановки
-   * @return Экземпляр маршрута
-   */
-  static stop BuildStopFrom(StopMeta stop_meta);
-  /**
    * @brief Разделяет строку на часть, связанную с названием команды и на часть, связанную с метаданными
    * @param src целевая строка
    * @return Пара из ключа команды и остальной строки
    */
   static std::pair<std::string_view, std::string_view> DivideCommandByCodeAndValue(const std::string &src);
+
+  /**
+   * @brief Собирает маршрут из остановок
+   * @param stop_meta Данные, необходимые для конструирования остановки
+   * @return Экземпляр маршрута
+   */
+  stop build_stop_from(StopMeta stop_meta);
 
   void add_stop(const stop &&stop);
 

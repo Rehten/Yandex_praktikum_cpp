@@ -1,6 +1,8 @@
 #include <iostream>
 #include "transport_catalogue.h"
 
+#define ADD_STOP_QUERY_LEXEMS_COUNT 3
+
 using namespace std;
 using namespace literals::string_literals;
 using namespace literals::string_view_literals;
@@ -16,9 +18,8 @@ void TransportCatalogue::apply_db_command(const string &command)
       break;
     case DBCommands::AddStop:
     {
-      stop added_stop = BuildStopFrom(MakeStopMetaFrom(db_parsed_command.second));
+      stop added_stop = build_stop_from(MakeStopMetaFrom(db_parsed_command.second));
 
-      added_stop.id = ++last_stop_id_;
       add_stop(move(added_stop));
     }
       break;
@@ -214,8 +215,15 @@ BusMeta TransportCatalogue::MakeBusMetaFrom(string_view meta_query)
   vector<string_view> splitted_meta_query = GetMetadataQueryByCode(DBCommands::AddBus, meta_query);
 
   return {
-    static_cast<size_t>(stoi(string(splitted_meta_query[0].begin(),  splitted_meta_query[0].end()))),
-    {splitted_meta_query.begin() + 1,  splitted_meta_query.end()}
+    static_cast<size_t>(
+      stoi(
+        string(
+          splitted_meta_query[0].begin(),
+          splitted_meta_query[0].end()
+        )
+      )
+    ),
+    {splitted_meta_query.begin() + 1, splitted_meta_query.end()}
   };
 }
 
@@ -223,7 +231,7 @@ StopMeta TransportCatalogue::MakeStopMetaFrom(string_view meta_query)
 {
   vector<string_view> splitted_meta_query = GetMetadataQueryByCode(DBCommands::AddStop, meta_query);
 
-  if (splitted_meta_query.size() < 3)
+  if (splitted_meta_query.size() < ADD_STOP_QUERY_LEXEMS_COUNT)
   {
     throw invalid_command();
   }
@@ -242,9 +250,9 @@ bus TransportCatalogue::BuildBusFrom(BusMeta bus_meta)
   return {bus_meta.first};
 }
 
-stop TransportCatalogue::BuildStopFrom(StopMeta stop_meta)
+stop TransportCatalogue::build_stop_from(StopMeta stop_meta)
 {
-  return stop{0, stop_meta.first, stop_meta.second};
+  return stop{++last_stop_id_, stop_meta.first, stop_meta.second};
 }
 
 pair<string_view, string_view> TransportCatalogue::DivideCommandByCodeAndValue(const string &src)
