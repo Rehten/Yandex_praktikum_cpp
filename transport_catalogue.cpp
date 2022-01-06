@@ -7,20 +7,16 @@ using namespace literals::string_view_literals;
 
 void TransportCatalogue::apply_db_command(const string &command)
 {
-  pair<DBCommands, string_view> db_command_meta = GetDBCommandCodeAndQuery(command);
-  vector<string_view> query = GetMetadataQueryByCode(db_command_meta.first, db_command_meta.second);
+  pair<DBCommands, string_view> db_parsed_command = GetDBCommandCodeAndQuery(command);
+  vector<string_view> query = GetMetadataQueryByCode(db_parsed_command.first, db_parsed_command.second);
 
-  switch (db_command_meta.first)
+  switch (db_parsed_command.first)
   {
     case DBCommands::AddBus:
-      add_bus({
-        static_cast<size_t>(
-            stoi(string(query[0].begin(),  query[0].end()))
-          )
-      });
+      add_bus(BuildBusFrom(MakeBusMetaFrom(db_parsed_command.second)));
       break;
     case DBCommands::AddStop:
-      add_stop({ ++last_stop_id_ });
+      add_stop(BuildStopFrom(MakeStopMetaFrom(db_parsed_command.second)));
       break;
     default:
       throw invalid_command_code();
@@ -211,7 +207,7 @@ pair<OutputCommands, string_view> TransportCatalogue::GetOutputCommandCodeAndQue
 
 BusMeta TransportCatalogue::MakeBusMetaFrom(string_view meta_query)
 {
-  return BusMeta();
+  return {static_cast<size_t>(stoi(string(meta_query.begin(),  meta_query.end()))), {}};
 }
 
 StopMeta TransportCatalogue::MakeStopMetaFrom(string_view meta_query)
@@ -249,12 +245,13 @@ pair<string_view, string_view> TransportCatalogue::DivideCommandByCodeAndValue(c
 
 void TransportCatalogue::add_stop(const stop &&stop)
 {
-
+  stops_.push_back(stop);
 }
 
 void TransportCatalogue::add_bus(const bus &&bus)
 {
-
+  buses_.push_back(bus);
+  ids_to_buses_[bus.id] = buses_.size() - 1;
 }
 
 void TransportCatalogue::add_route(const route &&route)
