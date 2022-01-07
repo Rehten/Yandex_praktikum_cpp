@@ -75,7 +75,7 @@ private:
   /**
    * @brief Карта для нахождения остановки по имени.
    */
-  std::map<std::string_view, size_t> names_to_stops_;
+  std::map<std::string, size_t> names_to_stops_;
   /**
    * @brief Карта для связи остановки с автобусами
    */

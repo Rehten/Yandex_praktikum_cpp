@@ -26,8 +26,8 @@ void TransportCatalogue::apply_db_command(const string &command)
 
       add_bus(BuildBusFrom(busmeta));
 
-      stops.reserve(busmeta.second.size());
-      added_route.stops.reserve(stops.size());
+      stops.resize(busmeta.second.size());
+      added_route.stops.resize(stops.size());
 
       transform(busmeta.second.begin(), busmeta.second.end(), stops.begin(), [](const string_view &stop_sv) -> string {
         return {stop_sv.begin(), stop_sv.end()};
@@ -37,7 +37,7 @@ void TransportCatalogue::apply_db_command(const string &command)
       {
         if (!names_to_stops_.count(stopname))
         {
-          add_stop({++last_stop_id_, stopname, nullopt});
+          add_stop({++last_stop_id_, {stopname.begin(),  stopname.end()}, nullopt});
         }
         connect_bus_and_stop(ids_to_buses_.at(busmeta.first), names_to_stops_.at(stopname));
       }
@@ -48,7 +48,7 @@ void TransportCatalogue::apply_db_command(const string &command)
 
       add_route(move(added_route));
 
-      for (size_t stop_index : set(routes_.rbegin()->stops.begin(),  routes_.rbegin()->stops.end()))
+      for (size_t stop_index : set(routes_[routes_.size() - 1].stops.begin(),  routes_[routes_.size() - 1].stops.end()))
       {
         connect_stop_and_route(stop_index, routes_.size() - 1);
       }
@@ -327,7 +327,7 @@ pair<string_view, string_view> TransportCatalogue::DivideCommandByCodeAndValue(c
 void TransportCatalogue::add_stop(const stop &&stop)
 {
   stops_.push_back(stop);
-  names_to_stops_[stops_.rbegin()->name] = stops_.size() - 1;
+  names_to_stops_[stops_[stops_.size() - 1].name] = stops_.size() - 1;
 }
 
 void TransportCatalogue::add_bus(const bus &&bus)
