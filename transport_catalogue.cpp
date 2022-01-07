@@ -1,7 +1,12 @@
 #include <iostream>
+#include <utility>
+#include <numeric>
+#include <algorithm>
+#include <set>
+
 #include "transport_catalogue.h"
 
-#define ADD_STOP_QUERY_LEXEMS_COUNT 3
+#define DB_COMMAND_QUERY_MIN_LEXEMS_COUNT 3
 
 using namespace std;
 using namespace literals::string_literals;
@@ -14,10 +19,60 @@ void TransportCatalogue::apply_db_command(const string &command)
   switch (db_parsed_command.first)
   {
     case DBCommands::AddBus:
-      add_bus(BuildBusFrom(MakeBusMetaFrom(db_parsed_command.second)));
+    {
+      auto busmeta = MakeBusMetaFrom(db_parsed_command.second);
+      vector<string> stops{};
+      route added_route{};
+
+      add_bus(BuildBusFrom(busmeta));
+
+      stops.reserve(busmeta.second.size());
+      added_route.stops.reserve(stops.size());
+
+      transform(busmeta.second.begin(), busmeta.second.end(), stops.begin(), [](const string_view &stop_sv) -> string {
+        return {stop_sv.begin(), stop_sv.end()};
+      });
+
+      for (const string &stopname : stops)
+      {
+        if (!names_to_stops_.count(stopname))
+        {
+          add_stop({++last_stop_id_, stopname, nullopt});
+        }
+        connect_bus_and_stop(ids_to_buses_.at(busmeta.first), names_to_stops_.at(stopname));
+      }
+
+      transform(stops.begin(), stops.end(), added_route.stops.begin(), [this](const string &stopname) -> size_t {
+        return names_to_stops_.at(stopname);
+      });
+
+      add_route(move(added_route));
+
+      for (size_t stop_index : set(routes_.rbegin()->stops.begin(),  routes_.rbegin()->stops.end()))
+      {
+        connect_stop_and_route(stop_index, routes_.size() - 1);
+      }
+    }
       break;
     case DBCommands::AddStop:
-      add_stop(build_stop_from(MakeStopMetaFrom(db_parsed_command.second)));
+    {
+      auto stopmeta = MakeStopMetaFrom(db_parsed_command.second);
+      string stopname = stopmeta.first;
+
+      if (!names_to_stops_.count(stopname))
+      {
+        add_stop(build_stop_from(stopmeta));
+      }
+      else
+      {
+        // Проставляет координаты, если остановка была неявно создана(например при создании автобуса) до вызова явной команды на создание
+        if (stops_[names_to_stops_.at(stopname)].coordinates.has_value())
+        {
+          throw stop_already_has_coordinates();
+        }
+        stops_[names_to_stops_.at(stopname)].coordinates = stopmeta.second;
+      }
+    }
       break;
     default:
       throw invalid_command_code();
@@ -62,7 +117,7 @@ vector<string_view> TransportCatalogue::GetMetadataQueryByCode(size_t code, cons
 vector<string_view> TransportCatalogue::GetMetadataQueryForAddBus(const string_view &command)
 {
   vector<string_view> bus_metadata_query{};
-  bus_metadata_query.reserve(3);
+  bus_metadata_query.reserve(DB_COMMAND_QUERY_MIN_LEXEMS_COUNT);
   string_view::iterator lexem_begin = command.begin();
   bool is_bus_id_getted(false);
   bool is_route_need_reversed(false);
@@ -114,7 +169,7 @@ vector<string_view> TransportCatalogue::GetMetadataQueryForAddBus(const string_v
 vector<string_view> TransportCatalogue::GetMetadataQueryForAddStop(const string_view &command)
 {
   vector<string_view> stop_metadata_query{};
-  stop_metadata_query.reserve(3);
+  stop_metadata_query.reserve(DB_COMMAND_QUERY_MIN_LEXEMS_COUNT);
   string_view::iterator lexem_begin = command.begin();
   bool is_stop_name_getted(false);
   bool is_latitude_getted(false);
@@ -227,7 +282,7 @@ StopMeta TransportCatalogue::MakeStopMetaFrom(string_view meta_query)
 {
   vector<string_view> splitted_meta_query = GetMetadataQueryByCode(DBCommands::AddStop, meta_query);
 
-  if (splitted_meta_query.size() < ADD_STOP_QUERY_LEXEMS_COUNT)
+  if (splitted_meta_query.size() < DB_COMMAND_QUERY_MIN_LEXEMS_COUNT)
   {
     throw invalid_command();
   }
@@ -272,6 +327,7 @@ pair<string_view, string_view> TransportCatalogue::DivideCommandByCodeAndValue(c
 void TransportCatalogue::add_stop(const stop &&stop)
 {
   stops_.push_back(stop);
+  names_to_stops_[stops_.rbegin()->name] = stops_.size() - 1;
 }
 
 void TransportCatalogue::add_bus(const bus &&bus)

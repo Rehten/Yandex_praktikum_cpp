@@ -34,7 +34,6 @@ struct bus
 
 struct route
 {
-  size_t id;
   std::vector<size_t> stops;
 };
 using BusMeta = std::pair<size_t, std::vector<std::string_view>>;
@@ -44,13 +43,20 @@ class TransportCatalogue
 {
 public:
   struct invalid_command : public std::exception
-  {};
+  {
+  };
   struct invalid_command_code : public std::exception
-  {};
+  {
+  };
   struct invalid_command_metadata : public std::exception
-  {};
+  {
+  };
   struct empty_command_metadata : public std::exception
-  {};
+  {
+  };
+  struct stop_already_has_coordinates : public std::exception
+  {
+  };
 private:
   size_t last_stop_id_ = 1;
   /**
@@ -91,12 +97,14 @@ public:
    * @param command Код команды с соответствующими данными
    */
   void apply_db_command(const std::string &command);
+
   /**
    * @brief Применяет команду к целевому справочнику
    * @param output_stream Поток вывода
    * @param command Код команды с соответствующими данными
    */
   void apply_output_command(std::ostream &output_stream, const std::string &command);
+
 private:
   /**
    * @brief Разбирает исходную строку команды на ключевые слова, которые влияют на последующую обработку
@@ -109,7 +117,9 @@ private:
   static std::vector<std::string_view> GetMetadataQueryByCode(size_t code, const std::string_view &command);
 
   static std::vector<std::string_view> GetMetadataQueryForAddBus(const std::string_view &command);
+
   static std::vector<std::string_view> GetMetadataQueryForAddStop(const std::string_view &command);
+
   static std::vector<std::string_view> GetMetadataQueryForPrintBus(const std::string_view &command);
 
   /**
@@ -119,6 +129,7 @@ private:
    * @throw @struct invalid_command если в тексте команды содержится ошибка
    */
   static std::pair<DBCommands, std::string_view> GetDBCommandCodeAndQuery(const std::string &from);
+
   /**
    * @brief Возвращает тип команды, а также подстроку, содержащую метаданные по ней для дальнейшей конвертации
    * @param from Исходный текст команды с ключом и метаданными
@@ -126,6 +137,7 @@ private:
    * @throw @struct invalid_command если в тексте команды содержится ошибка
    */
   static std::pair<OutputCommands, std::string_view> GetOutputCommandCodeAndQuery(const std::string &from);
+
   /**
    * @brief Собирает структуру автобуса на основе соответствующих метаданных
    * @param bus_meta Данные, необходимые для конструирования структуры
@@ -136,6 +148,7 @@ private:
   static StopMeta MakeStopMetaFrom(std::string_view meta_query);
 
   static bus BuildBusFrom(BusMeta bus_meta);
+
   /**
    * @brief Разделяет строку на часть, связанную с названием команды и на часть, связанную с метаданными
    * @param src целевая строка
@@ -157,6 +170,7 @@ private:
   void add_route(const route &&route);
 
   void connect_bus_and_stop(size_t bus_index, size_t stop_index);
+
   void connect_stop_and_route(size_t stop_index, size_t route_index);
 
   void clear();
