@@ -94,19 +94,29 @@ void TransportCatalogue::apply_output_command(ostream &output_stream, const stri
 
       if (!ids_to_buses_.count(bus_id))
       {
-        output_stream << "not found"s;
+        output_stream << "not found"s << endl;
       }
       else
       {
         auto selected_bus_stops = buses_to_stops_.at(ids_to_buses_.at(bus_id));
 
+        if (selected_bus_stops.size() < 2)
+        {
+          throw invalid_command_metadata();
+        }
+
         size_t routes_count = selected_bus_stops.size();
         size_t unique_routes_count = set(selected_bus_stops.begin(),  selected_bus_stops.end()).size();
         double routes_length {};
 
+        for (size_t i = 1; i != selected_bus_stops.size(); ++i)
+        {
+          routes_length += ComputeDistance(*stops_[selected_bus_stops[i - 1]].coordinates, *stops_[selected_bus_stops[i]].coordinates);
+        }
+
         output_stream << routes_count << " stops on route, "s
                       << unique_routes_count << " unique stops, "s
-                      << routes_length << " route length"s;
+                      << routes_length << " route length"s << endl;
       }
     }
       break;
