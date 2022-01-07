@@ -89,9 +89,25 @@ void TransportCatalogue::apply_output_command(ostream &output_stream, const stri
     case OutputCommands::PrintBus:
     {
       size_t bus_id = stoi(string(query[0].begin(), query[0].end()));
-      size_t printed_bus_id = ids_to_buses_.at(bus_id);
 
-      output_stream << "Bus "s << buses_[printed_bus_id].id << ": not found"s;
+      output_stream << "Bus "s << bus_id << ": "s;
+
+      if (!ids_to_buses_.count(bus_id))
+      {
+        output_stream << "not found"s;
+      }
+      else
+      {
+        auto selected_bus_stops = buses_to_stops_.at(ids_to_buses_.at(bus_id));
+
+        size_t routes_count = selected_bus_stops.size();
+        size_t unique_routes_count = set(selected_bus_stops.begin(),  selected_bus_stops.end()).size();
+        double routes_length {};
+
+        output_stream << routes_count << " stops on route, "s
+                      << unique_routes_count << " unique stops, "s
+                      << routes_length << " route length"s;
+      }
     }
       break;
     default:
