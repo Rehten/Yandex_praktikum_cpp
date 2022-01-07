@@ -155,7 +155,7 @@ vector<string_view> TransportCatalogue::GetMetadataQueryForAddBus(const string_v
       if (*iter == ':')
       {
         is_bus_id_getted = true;
-        bus_metadata_query.emplace_back(lexem_begin, iter);
+        bus_metadata_query.push_back({&*lexem_begin, static_cast<size_t>(&*iter - &*lexem_begin)});
         lexem_begin = iter + 2 < command.end() ? iter + 2 : throw invalid_command_metadata();
         ++iter;
       }
@@ -207,7 +207,7 @@ vector<string_view> TransportCatalogue::GetMetadataQueryForAddStop(const string_
       if (*iter == ':')
       {
         is_stop_name_getted = true;
-        stop_metadata_query.emplace_back(lexem_begin, iter);
+        stop_metadata_query.push_back({&*lexem_begin, static_cast<size_t>(&*iter - &*lexem_begin)});
         lexem_begin = iter + 2 < command.end() ? iter + 2 : throw invalid_command_metadata();
         ++iter;
       }
