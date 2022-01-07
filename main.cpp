@@ -1,4 +1,5 @@
 #include <iostream>
+#include <iomanip>
 
 #include "input_reader.h"
 #include "stat_reader.h"
@@ -18,6 +19,8 @@ int main()
   }
 
   auto output_command_query = user_input_output_command();
+
+  cout << setprecision(6);
 
   for (const auto &command : output_command_query)
   {
