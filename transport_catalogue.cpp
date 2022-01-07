@@ -169,7 +169,7 @@ vector<string_view> TransportCatalogue::GetMetadataQueryForAddBus(const string_v
 
       if (command.end() - iter == 1)
       {
-        bus_metadata_query.emplace_back(lexem_begin, command.end());
+        bus_metadata_query.push_back({&*lexem_begin, static_cast<size_t>(&*(command.rbegin()) + 1 - &*lexem_begin)});
       }
 
       if (*iter == '-' || *iter == '>')
@@ -226,7 +226,7 @@ vector<string_view> TransportCatalogue::GetMetadataQueryForAddStop(const string_
     {
       if (command.end() - iter == 1)
       {
-        stop_metadata_query.emplace_back(lexem_begin, command.end());
+        stop_metadata_query.push_back({&*lexem_begin, static_cast<size_t>(&*(command.rbegin()) + 1 - &*lexem_begin)});
       }
     }
   }
