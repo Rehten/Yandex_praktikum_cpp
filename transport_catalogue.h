@@ -1,6 +1,7 @@
 #pragma once
 
 #include <map>
+#include <set>
 #include <vector>
 #include <optional>
 #include <string>
@@ -78,7 +79,7 @@ private:
   /**
    * @brief Карта для связи остановки с автобусами
    */
-  std::map<size_t, std::vector<size_t>> stops_to_buses_;
+  std::map<size_t, std::set<size_t>> stops_to_buses_;
   /**
    * @brief Карта для связи автобуса с остановками
    */

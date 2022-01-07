@@ -344,7 +344,10 @@ void TransportCatalogue::add_route(const route &&route)
 void TransportCatalogue::connect_bus_and_stop(size_t bus_index, size_t stop_index)
 {
   buses_to_stops_[bus_index].push_back(stop_index);
-  stops_to_buses_[stop_index].push_back(bus_index);
+  if (!stops_to_buses_[stop_index].count(bus_index))
+  {
+    stops_to_buses_[stop_index].insert(bus_index);
+  }
 }
 
 void TransportCatalogue::connect_stop_and_route(size_t stop_index, size_t route_index)
