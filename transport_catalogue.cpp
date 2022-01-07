@@ -236,7 +236,7 @@ vector<string_view> TransportCatalogue::GetMetadataQueryForAddStop(const string_
 
 vector<string_view> TransportCatalogue::GetMetadataQueryForPrintBus(const string_view &command)
 {
-  return {{command.begin(), command.end()}};
+  return {command};
 }
 
 pair<DBCommands, string_view> TransportCatalogue::GetDBCommandCodeAndQuery(const string &from)
@@ -337,12 +337,12 @@ pair<string_view, string_view> TransportCatalogue::DivideCommandByCodeAndValue(c
   string_view command_code{};
   string_view command_meta{};
 
-  for (auto iter = src.begin(); iter != src.end(); ++iter)
+  for (size_t i = 0; i != src.size(); ++i)
   {
-    if (*iter == ' ')
+    if (src[i] == ' ')
     {
-      command_code = {src.begin(), iter};
-      command_meta = {iter + 1, src.end()};
+      command_code = {src.data(), i};
+      command_meta = {src.data() + i + 1, src.size() - i - 1};
       break;
     }
   }
