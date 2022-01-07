@@ -174,7 +174,7 @@ vector<string_view> TransportCatalogue::GetMetadataQueryForAddBus(const string_v
 
       if (*iter == '-' || *iter == '>')
       {
-        bus_metadata_query.emplace_back(lexem_begin, iter - 1);
+        bus_metadata_query.push_back({&*lexem_begin, static_cast<size_t>(&*(iter - 1) - &*lexem_begin)});
         lexem_begin = iter + 2 < command.end() ? iter + 2 : throw invalid_command_metadata();
       }
     }
@@ -217,7 +217,7 @@ vector<string_view> TransportCatalogue::GetMetadataQueryForAddStop(const string_
       if (*iter == ',')
       {
         is_latitude_getted = true;
-        stop_metadata_query.emplace_back(lexem_begin, iter);
+        stop_metadata_query.push_back({&*lexem_begin, static_cast<size_t>(&*iter - &*lexem_begin)});
         lexem_begin = iter + 2 < command.end() ? iter + 2 : throw invalid_command_metadata();
         ++iter;
       }
