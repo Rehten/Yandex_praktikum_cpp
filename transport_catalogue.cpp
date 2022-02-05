@@ -88,7 +88,7 @@ void TransportCatalogue::apply_output_command(ostream &output_stream, const stri
   {
     case OutputCommands::PrintBus:
     {
-      size_t bus_id = stoi(string(query[0].begin(), query[0].end()));
+      string bus_id = string(query[0].begin(), query[0].end());
 
       output_stream << "Bus "s << bus_id << ": "s;
 
@@ -292,13 +292,9 @@ BusMeta TransportCatalogue::MakeBusMetaFrom(string_view meta_query)
   vector<string_view> splitted_meta_query = GetMetadataQueryByCode(DBCommands::AddBus, meta_query);
 
   return {
-    static_cast<size_t>(
-      stoi(
-        string(
-          splitted_meta_query[0].begin(),
-          splitted_meta_query[0].end()
-        )
-      )
+    string(
+      splitted_meta_query[0].begin(),
+      splitted_meta_query[0].end()
     ),
     {splitted_meta_query.begin() + 1, splitted_meta_query.end()}
   };
