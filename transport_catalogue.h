@@ -19,6 +19,7 @@ enum DBCommands
 enum OutputCommands
 {
   PrintBus = 100000,
+  PrintStop = 100001,
 };
 
 struct stop
@@ -122,6 +123,8 @@ private:
   static std::vector<std::string_view> GetMetadataQueryForAddStop(const std::string_view &command);
 
   static std::vector<std::string_view> GetMetadataQueryForPrintBus(const std::string_view &command);
+
+  static std::vector<std::string_view> GetMetadataQueryForPrintStop(const std::string_view &command);
 
   /**
    * @brief Возвращает тип команды, а также подстроку, содержащую метаданные по ней для дальнейшей конвертации

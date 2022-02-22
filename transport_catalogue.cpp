@@ -120,6 +120,9 @@ void TransportCatalogue::apply_output_command(ostream &output_stream, const stri
       }
     }
       break;
+    case OutputCommands::PrintStop:
+      output_stream << "PRINT STOP" << endl;
+      break;
     default:
       throw invalid_command_code();
   }
@@ -135,6 +138,8 @@ vector<string_view> TransportCatalogue::GetMetadataQueryByCode(size_t code, cons
       return GetMetadataQueryForAddStop(command);
     case OutputCommands::PrintBus:
       return GetMetadataQueryForPrintBus(command);
+    case OutputCommands::PrintStop:
+      return GetMetadataQueryForPrintStop(command);
     default:
       throw invalid_command_code();
   }
@@ -239,6 +244,11 @@ vector<string_view> TransportCatalogue::GetMetadataQueryForPrintBus(const string
   return {command};
 }
 
+std::vector<string_view> TransportCatalogue::GetMetadataQueryForPrintStop(const string_view &command)
+{
+  return vector<string_view>();
+}
+
 pair<DBCommands, string_view> TransportCatalogue::GetDBCommandCodeAndQuery(const string &from)
 {
   if (from.empty())
@@ -278,6 +288,10 @@ pair<OutputCommands, string_view> TransportCatalogue::GetOutputCommandCodeAndQue
   if (command_key_and_meta.first == "Bus"sv)
   {
     command_key = OutputCommands::PrintBus;
+  }
+  else if (command_key_and_meta.first == "Stop"sv)
+  {
+    command_key = OutputCommands::PrintStop;
   }
   else
   {
