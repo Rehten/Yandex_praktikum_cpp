@@ -121,8 +121,31 @@ void TransportCatalogue::apply_output_command(ostream &output_stream, const stri
     }
       break;
     case OutputCommands::PrintStop:
-      output_stream << "PRINT STOP" << endl;
-      break;
+    {
+      string query_stop_name = string(query[0].begin(),  query[0].end());
+
+      if (!names_to_stops_.count(query_stop_name))
+      {
+        output_stream << "Stop " << query_stop_name << ": not found" << endl;
+        return;
+      }
+
+      size_t stop_index = names_to_stops_.at(query_stop_name);
+
+      if (!stops_to_buses_.count(stop_index) || stops_to_buses_.at(stop_index).empty())
+      {
+        output_stream << "Stop " << query_stop_name << ": no buses" << endl;
+        return;
+      }
+
+      output_stream << "Stop " << query_stop_name << ": buses ";
+      for (size_t bus_index : stops_to_buses_.at(names_to_stops_.at(query_stop_name)))
+      {
+        output_stream << buses_[bus_index].id << " ";
+      }
+      output_stream << endl;
+      return;
+    }
     default:
       throw invalid_command_code();
   }
@@ -246,7 +269,7 @@ vector<string_view> TransportCatalogue::GetMetadataQueryForPrintBus(const string
 
 std::vector<string_view> TransportCatalogue::GetMetadataQueryForPrintStop(const string_view &command)
 {
-  return vector<string_view>();
+  return {command};
 }
 
 pair<DBCommands, string_view> TransportCatalogue::GetDBCommandCodeAndQuery(const string &from)
