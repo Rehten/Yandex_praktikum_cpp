@@ -138,10 +138,22 @@ void TransportCatalogue::apply_output_command(ostream &output_stream, const stri
         return;
       }
 
+      auto &buses_indexes = stops_to_buses_.at(names_to_stops_.at(query_stop_name));
+      vector<string> buses_ids {};
+
+      buses_ids.reserve(buses_indexes.size());
+
       output_stream << "Stop " << query_stop_name << ": buses ";
-      for (size_t bus_index : stops_to_buses_.at(names_to_stops_.at(query_stop_name)))
+      for (size_t bus_index : buses_indexes)
       {
-        output_stream << buses_[bus_index].id << " ";
+        buses_ids.push_back(buses_[bus_index].id);
+      }
+
+      sort(buses_ids.begin(),  buses_ids.end(), less());
+
+      for (const string &id : buses_ids)
+      {
+        output_stream << id << " ";
       }
       output_stream << endl;
       return;
