@@ -276,7 +276,7 @@ vector<string_view> TransportCatalogue::GetMetadataQueryForAddStop(const string_
         break;
       }
 
-      if (command.end() - iter > 5 && (string_view{iter, iter + 5} == "m to "sv))
+      if (command.end() - iter > 5 && (string_view(&*iter, 5) == "m to "sv))
       {
         stop_metadata_query.push_back({&*lexem_begin, static_cast<size_t>(&*iter - &*lexem_begin)});
         lexem_begin = iter + 5;
