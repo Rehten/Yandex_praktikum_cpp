@@ -238,7 +238,7 @@ vector<string_view> TransportCatalogue::GetMetadataQueryForAddStop(const string_
   stop_metadata_query.reserve(DB_COMMAND_QUERY_MIN_LEXEMS_COUNT);
   string_view::iterator lexem_begin = command.begin();
   bool is_stop_name_getted(false);
-  bool is_latitude_getted(false);
+  size_t coordinates_writen_count(0);
 
   for (auto iter = command.begin(); iter != command.end(); ++iter)
   {
@@ -252,11 +252,11 @@ vector<string_view> TransportCatalogue::GetMetadataQueryForAddStop(const string_
         ++iter;
       }
     }
-    else if (!is_latitude_getted)
+    else if (coordinates_writen_count != 2)
     {
-      if (*iter == ',')
+      if (*iter == ',' || command.end() - iter == 1)
       {
-        is_latitude_getted = true;
+        ++coordinates_writen_count;
         stop_metadata_query.push_back({&*lexem_begin, static_cast<size_t>(&*iter - &*lexem_begin)});
         lexem_begin = iter + 2 < command.end() ? iter + 2 : throw invalid_command_metadata();
         ++iter;
@@ -267,6 +267,21 @@ vector<string_view> TransportCatalogue::GetMetadataQueryForAddStop(const string_
       if (command.end() - iter == 1)
       {
         stop_metadata_query.push_back({&*lexem_begin, static_cast<size_t>(&*(command.rbegin()) + 1 - &*lexem_begin)});
+        break;
+      }
+
+      if (command.end() - iter > 5 && (string_view{iter, iter + 5} == "m to "sv))
+      {
+        stop_metadata_query.push_back({&*lexem_begin, static_cast<size_t>(&*iter - &*lexem_begin)});
+        lexem_begin = iter + 5;
+        iter = lexem_begin;
+      }
+
+      if (*iter == ',')
+      {
+        stop_metadata_query.push_back({&*lexem_begin, static_cast<size_t>(&*iter - &*lexem_begin)});
+        lexem_begin = iter + 2 < command.end() ? iter + 2 : throw invalid_command_metadata();
+        ++iter;
       }
     }
   }
