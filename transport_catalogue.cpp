@@ -258,6 +258,12 @@ vector<string_view> TransportCatalogue::GetMetadataQueryForAddStop(const string_
       {
         ++coordinates_writen_count;
         stop_metadata_query.push_back({&*lexem_begin, static_cast<size_t>(&*iter - &*lexem_begin)});
+
+        if (command.end() - iter == 1)
+        {
+          break;
+        }
+
         lexem_begin = iter + 2 < command.end() ? iter + 2 : throw invalid_command_metadata();
         ++iter;
       }
