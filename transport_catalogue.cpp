@@ -73,8 +73,15 @@ void TransportCatalogue::apply_db_command(const string &command)
               static_cast<int64_t>(stoi(string(stopmeta.dependencies[i].begin(),  stopmeta.dependencies[i].end()), &sz))
             };
 
-            stops_to_stop_distances_[stopname][dependency_stopname] = dependency_value;
-            stops_to_stop_distances_[dependency_stopname][stopname] = dependency_value;
+            if (stops_to_stop_distances_[stopname].count(dependency_stopname))
+            {
+              stops_to_stop_distances_[stopname][dependency_stopname] = dependency_value;
+            }
+            else
+            {
+              stops_to_stop_distances_[stopname][dependency_stopname] = dependency_value;
+              stops_to_stop_distances_[dependency_stopname][stopname] = dependency_value;
+            }
           }
         }
       }
@@ -122,16 +129,25 @@ void TransportCatalogue::apply_output_command(ostream &output_stream, const stri
 
         size_t routes_count = selected_bus_stops.size();
         size_t unique_routes_count = set(selected_bus_stops.begin(),  selected_bus_stops.end()).size();
-        double routes_length {};
+        double theoretical_routes_length {};
+        double practical_routes_length {};
 
         for (size_t i = 1; i != selected_bus_stops.size(); ++i)
         {
-          routes_length += ComputeDistance(*stops_[selected_bus_stops[i - 1]].coordinates, *stops_[selected_bus_stops[i]].coordinates);
+          stop prev = stops_[selected_bus_stops[i - 1]];
+          stop cur = stops_[selected_bus_stops[i]];
+
+          theoretical_routes_length += ComputeDistance(*prev.coordinates, *cur.coordinates);
+          practical_routes_length += static_cast<double>(
+            stops_to_stop_distances_
+            .at(prev.name)
+            .at(cur.name)
+            );
         }
 
         output_stream << routes_count << " stops on route, "s
                       << unique_routes_count << " unique stops, "s
-                      << routes_length << " route length"s << endl;
+                      << practical_routes_length << " route length"s << endl;
       }
     }
       break;
