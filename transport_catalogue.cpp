@@ -2,7 +2,7 @@
 #include <utility>
 #include <numeric>
 #include <algorithm>
-#include <set>
+#include <cstring>
 
 #include "transport_catalogue.h"
 
@@ -57,11 +57,26 @@ void TransportCatalogue::apply_db_command(const string &command)
     case DBCommands::AddStop:
     {
       auto stopmeta = MakeStopMetaFrom(db_parsed_command.second);
-      string stopname = stopmeta.first;
+      string stopname = stopmeta.name;
 
       if (!names_to_stops_.count(stopname))
       {
         add_stop(build_stop_from(stopmeta));
+        // Кодить здесь!
+        if (stopmeta.dependencies.size() || stopmeta.dependencies.size() % 2)
+        {
+          for (size_t i = 0; i != stopmeta.dependencies.size(); i += 2)
+          {
+            string dependency_stopname = {stopmeta.dependencies[i + 1].begin(),  stopmeta.dependencies[i + 1].end()};
+            string::size_type sz;
+            int64_t dependency_value {
+              static_cast<int64_t>(stoi(string(stopmeta.dependencies[i].begin(),  stopmeta.dependencies[i].end()), &sz))
+            };
+
+            stops_to_stop_distances_[stopname][dependency_stopname] = dependency_value;
+            stops_to_stop_distances_[dependency_stopname][stopname] = dependency_value;
+          }
+        }
       }
       else
       {
@@ -70,7 +85,7 @@ void TransportCatalogue::apply_db_command(const string &command)
         {
           throw stop_already_has_coordinates();
         }
-        stops_[names_to_stops_.at(stopname)].coordinates = stopmeta.second;
+        stops_[names_to_stops_.at(stopname)].coordinates = stopmeta.coordinates;
       }
     }
       break;
@@ -379,12 +394,16 @@ StopMeta TransportCatalogue::MakeStopMetaFrom(string_view meta_query)
     throw invalid_command();
   }
 
+  auto dependencies = splitted_meta_query.size() == DB_COMMAND_QUERY_MIN_LEXEMS_COUNT
+    ? vector<string_view>{} : vector<string_view>{splitted_meta_query.begin() + 3,  splitted_meta_query.end()};
+
   return {
     {splitted_meta_query[0].begin(), splitted_meta_query[0].end()},
     Coordinates{
       stod(string{splitted_meta_query[1].begin(), splitted_meta_query[1].end()}),
       stod(string{splitted_meta_query[2].begin(), splitted_meta_query[2].end()})
-    }
+    },
+    dependencies
   };
 }
 
@@ -395,7 +414,7 @@ bus TransportCatalogue::BuildBusFrom(BusMeta bus_meta)
 
 stop TransportCatalogue::build_stop_from(StopMeta stop_meta)
 {
-  return stop{++last_stop_id_, stop_meta.first, stop_meta.second};
+  return stop{++last_stop_id_, stop_meta.name, stop_meta.coordinates};
 }
 
 pair<string_view, string_view> TransportCatalogue::DivideCommandByCodeAndValue(const string &src)

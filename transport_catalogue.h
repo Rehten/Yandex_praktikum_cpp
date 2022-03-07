@@ -39,7 +39,13 @@ struct route
   std::vector<size_t> stops;
 };
 using BusMeta = std::pair<std::string, std::vector<std::string_view>>;
-using StopMeta = std::pair<std::string, Coordinates>;
+
+struct StopMeta
+{
+  std::string name;
+  Coordinates coordinates;
+  std::vector<std::string_view> dependencies;
+};
 
 class TransportCatalogue
 {
@@ -93,6 +99,10 @@ private:
    * @brief Карта для связи id автобуса с самим автобусом
    */
   std::map<std::string, size_t> ids_to_buses_;
+  /**
+   * @brief Карта для указания расстояния между остановками
+   */
+   std::map<std::string, std::map<std::string, int64_t>> stops_to_stop_distances_;
 public:
   /**
    * @brief Применяет команду к целевому справочнику
