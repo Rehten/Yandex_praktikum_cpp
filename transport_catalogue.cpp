@@ -33,11 +33,11 @@ void TransportCatalogue::apply_db_command(const string &command)
         return {stop_sv.begin(), stop_sv.end()};
       });
 
-      for (const string &stopname : stops)
+      for (const string &stopname: stops)
       {
         if (!names_to_stops_.count(stopname))
         {
-          add_stop({++last_stop_id_, {stopname.begin(),  stopname.end()}, nullopt});
+          add_stop({++last_stop_id_, {stopname.begin(), stopname.end()}, nullopt});
         }
         connect_bus_and_stop(ids_to_buses_.at(busmeta.first), names_to_stops_.at(stopname));
       }
@@ -48,7 +48,7 @@ void TransportCatalogue::apply_db_command(const string &command)
 
       add_route(move(added_route));
 
-      for (size_t stop_index : set(routes_[routes_.size() - 1].stops.begin(),  routes_[routes_.size() - 1].stops.end()))
+      for (size_t stop_index: set(routes_[routes_.size() - 1].stops.begin(), routes_[routes_.size() - 1].stops.end()))
       {
         connect_stop_and_route(stop_index, routes_.size() - 1);
       }
@@ -62,28 +62,6 @@ void TransportCatalogue::apply_db_command(const string &command)
       if (!names_to_stops_.count(stopname))
       {
         add_stop(build_stop_from(stopmeta));
-        // Кодить здесь!
-        if (stopmeta.dependencies.size() || stopmeta.dependencies.size() % 2)
-        {
-          for (size_t i = 0; i != stopmeta.dependencies.size(); i += 2)
-          {
-            string dependency_stopname = {stopmeta.dependencies[i + 1].begin(),  stopmeta.dependencies[i + 1].end()};
-            string::size_type sz;
-            int64_t dependency_value {
-              static_cast<int64_t>(stoi(string(stopmeta.dependencies[i].begin(),  stopmeta.dependencies[i].end()), &sz))
-            };
-
-            if (stops_to_stop_distances_[stopname].count(dependency_stopname))
-            {
-              stops_to_stop_distances_[stopname][dependency_stopname] = dependency_value;
-            }
-            else
-            {
-              stops_to_stop_distances_[stopname][dependency_stopname] = dependency_value;
-              stops_to_stop_distances_[dependency_stopname][stopname] = dependency_value;
-            }
-          }
-        }
       }
       else
       {
@@ -93,6 +71,11 @@ void TransportCatalogue::apply_db_command(const string &command)
           throw stop_already_has_coordinates();
         }
         stops_[names_to_stops_.at(stopname)].coordinates = stopmeta.coordinates;
+      }
+
+      if (stopmeta.dependencies.size() || stopmeta.dependencies.size() % 2)
+      {
+        write_stop_dependency(stopmeta, stopname);
       }
     }
       break;
@@ -128,9 +111,9 @@ void TransportCatalogue::apply_output_command(ostream &output_stream, const stri
         }
 
         size_t routes_count = selected_bus_stops.size();
-        size_t unique_routes_count = set(selected_bus_stops.begin(),  selected_bus_stops.end()).size();
-        double theoretical_routes_length {};
-        double practical_routes_length {};
+        size_t unique_routes_count = set(selected_bus_stops.begin(), selected_bus_stops.end()).size();
+        double theoretical_routes_length{};
+        double practical_routes_length{};
 
         for (size_t i = 1; i != selected_bus_stops.size(); ++i)
         {
@@ -140,9 +123,9 @@ void TransportCatalogue::apply_output_command(ostream &output_stream, const stri
           theoretical_routes_length += ComputeDistance(*prev.coordinates, *cur.coordinates);
           practical_routes_length += static_cast<double>(
             stops_to_stop_distances_
-            .at(prev.name)
-            .at(cur.name)
-            );
+              .at(prev.name)
+              .at(cur.name)
+          );
         }
 
         output_stream << routes_count << " stops on route, "s
@@ -153,7 +136,7 @@ void TransportCatalogue::apply_output_command(ostream &output_stream, const stri
       break;
     case OutputCommands::PrintStop:
     {
-      string query_stop_name = string(query[0].begin(),  query[0].end());
+      string query_stop_name = string(query[0].begin(), query[0].end());
 
       if (!names_to_stops_.count(query_stop_name))
       {
@@ -170,19 +153,19 @@ void TransportCatalogue::apply_output_command(ostream &output_stream, const stri
       }
 
       auto &buses_indexes = stops_to_buses_.at(names_to_stops_.at(query_stop_name));
-      vector<string> buses_ids {};
+      vector<string> buses_ids{};
 
       buses_ids.reserve(buses_indexes.size());
 
       output_stream << "Stop " << query_stop_name << ": buses ";
-      for (size_t bus_index : buses_indexes)
+      for (size_t bus_index: buses_indexes)
       {
         buses_ids.push_back(buses_[bus_index].id);
       }
 
-      sort(buses_ids.begin(),  buses_ids.end(), less());
+      sort(buses_ids.begin(), buses_ids.end(), less());
 
-      for (const string &id : buses_ids)
+      for (const string &id: buses_ids)
       {
         output_stream << id << " ";
       }
@@ -411,7 +394,8 @@ StopMeta TransportCatalogue::MakeStopMetaFrom(string_view meta_query)
   }
 
   auto dependencies = splitted_meta_query.size() == DB_COMMAND_QUERY_MIN_LEXEMS_COUNT
-    ? vector<string_view>{} : vector<string_view>{splitted_meta_query.begin() + 3,  splitted_meta_query.end()};
+                      ? vector<string_view>{} : vector<string_view>{splitted_meta_query.begin() + 3,
+                                                                    splitted_meta_query.end()};
 
   return {
     {splitted_meta_query[0].begin(), splitted_meta_query[0].end()},
@@ -493,4 +477,29 @@ void TransportCatalogue::clear()
   buses_to_stops_.clear();
   stops_to_routes_.clear();
   ids_to_buses_.clear();
+}
+
+void TransportCatalogue::write_stop_dependency(
+  const StopMeta &stopmeta,
+  const std::string &stopname
+)
+{
+  for (size_t i = 0; i != stopmeta.dependencies.size(); i += 2)
+  {
+    string dependency_stopname = {stopmeta.dependencies[i + 1].begin(), stopmeta.dependencies[i + 1].end()};
+    string::size_type sz;
+    int64_t dependency_value{
+      static_cast<int64_t>(stoi(string(stopmeta.dependencies[i].begin(), stopmeta.dependencies[i].end()), &sz))
+    };
+
+    if (stops_to_stop_distances_[stopname].count(dependency_stopname))
+    {
+      stops_to_stop_distances_[stopname][dependency_stopname] = dependency_value;
+    }
+    else
+    {
+      stops_to_stop_distances_[stopname][dependency_stopname] = dependency_value;
+      stops_to_stop_distances_[dependency_stopname][stopname] = dependency_value;
+    }
+  }
 }

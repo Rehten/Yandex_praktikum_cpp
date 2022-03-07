@@ -177,6 +177,8 @@ private:
    */
   stop build_stop_from(StopMeta stop_meta);
 
+  void write_stop_dependency(const StopMeta &stop_meta, const std::string &stopname);
+
   void add_stop(const stop &&stop);
 
   void add_bus(const bus &&bus);
