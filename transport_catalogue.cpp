@@ -112,6 +112,7 @@ void TransportCatalogue::apply_output_command(ostream &output_stream, const stri
 
         size_t routes_count = selected_bus_stops.size();
         size_t unique_routes_count = set(selected_bus_stops.begin(), selected_bus_stops.end()).size();
+        bool is_practical_length_can_be_calculated(true);
         double theoretical_routes_length{};
         double practical_routes_length{};
 
@@ -121,16 +122,28 @@ void TransportCatalogue::apply_output_command(ostream &output_stream, const stri
           stop cur = stops_[selected_bus_stops[i]];
 
           theoretical_routes_length += ComputeDistance(*prev.coordinates, *cur.coordinates);
-          practical_routes_length += static_cast<double>(
-            stops_to_stop_distances_
-              .at(prev.name)
-              .at(cur.name)
-          );
+
+          if (
+            is_practical_length_can_be_calculated &&
+            stops_to_stop_distances_.count(prev.name)
+            &&
+            stops_to_stop_distances_.at(prev.name).count(cur.name))
+          {
+            practical_routes_length += static_cast<double>(
+              stops_to_stop_distances_
+                .at(prev.name)
+                .at(cur.name)
+            );
+          }
+          else
+          {
+            is_practical_length_can_be_calculated = false;
+          }
         }
 
         output_stream << routes_count << " stops on route, "s
                       << unique_routes_count << " unique stops, "s
-                      << practical_routes_length << " route length, "s
+                      << (is_practical_length_can_be_calculated ? practical_routes_length : theoretical_routes_length) << " route length, "s
                       << practical_routes_length/theoretical_routes_length << " curvature"s << endl;
       }
     }
