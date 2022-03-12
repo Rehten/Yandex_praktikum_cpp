@@ -102,7 +102,7 @@ private:
   /**
    * @brief Карта для указания расстояния между остановками
    */
-   std::map<std::string, std::map<std::string, int64_t>> stops_to_stop_distances_;
+   std::map<std::string, std::map<std::string, int>> stops_to_stop_distances_;
 public:
   /**
    * @brief Применяет команду к целевому справочнику

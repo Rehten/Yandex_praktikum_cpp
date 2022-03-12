@@ -144,7 +144,7 @@ void TransportCatalogue::apply_output_command(ostream &output_stream, const stri
         output_stream << routes_count << " stops on route, "s
                       << unique_routes_count << " unique stops, "s
                       << (is_practical_length_can_be_calculated ? practical_routes_length : theoretical_routes_length) << " route length, "s
-                      << practical_routes_length/theoretical_routes_length << " curvature"s << endl;
+                      << static_cast<double>(static_cast<double>(practical_routes_length)/theoretical_routes_length) << " curvature"s << endl;
       }
     }
       break;
@@ -502,8 +502,8 @@ void TransportCatalogue::write_stop_dependency(
   {
     string dependency_stopname = {stopmeta.dependencies[i + 1].begin(), stopmeta.dependencies[i + 1].end()};
     string::size_type sz;
-    int64_t dependency_value{
-      static_cast<int64_t>(stoi(string(stopmeta.dependencies[i].begin(), stopmeta.dependencies[i].end()), &sz))
+    int dependency_value{
+      static_cast<int>(stoi(string(stopmeta.dependencies[i].begin(), stopmeta.dependencies[i].end()), &sz))
     };
 
     if (stops_to_stop_distances_[stopname].count(dependency_stopname))
