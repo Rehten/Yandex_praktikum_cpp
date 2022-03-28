@@ -21,6 +21,7 @@ ini::Document ini::Load(istream &input)
 {
   Document document{};
   string line{};
+  string last_added{};
 
   string added_section_name{};
 
@@ -36,7 +37,7 @@ ini::Document ini::Load(istream &input)
     bool is_lexem_parsing_started(false);
     bool is_added_section(false);
 
-    for (size_t i = 0; i < line.size() - 1; ++i)
+    for (size_t i = 0; i < line.size(); ++i)
     {
       char c = line[i];
 
@@ -55,6 +56,16 @@ ini::Document ini::Load(istream &input)
             break;
           }
         }
+        else
+        {
+          if (c == '=')
+          {
+            lexem_start = i;
+            lexems.first = string{&line[0], &line[lexem_start]};
+            lexems.second = string{&line[lexem_start + 1], &line[line.size()]};
+            break;
+          }
+        }
       }
       else
       {
@@ -69,8 +80,18 @@ ini::Document ini::Load(istream &input)
         }
       }
     }
+
+    if (lexems.second.empty())
+    {
+      document.sections_[lexems.first];
+      last_added = lexems.first;
+    }
+    else
+    {
+      document.sections_[last_added][lexems.first] = lexems.second;
+    }
   }
 
-  return {};
+  return document;
 }
 
