@@ -9,6 +9,11 @@ ini::Section &ini::Document::AddSection(string name)
 
 const ini::Section &ini::Document::GetSection(const string &name) const
 {
+  if (!sections_.count(name))
+  {
+    return ini::Section{};
+  }
+
   return sections_.at(name);
 }
 
@@ -87,7 +92,7 @@ ini::Document ini::Load(istream &input)
                 }
               }
 
-              lexems.second = string{&lexems.second[cut_from_start], cut_from_end + 1};
+              lexems.second = string{&lexems.second[cut_from_start], cut_from_end + 1 - cut_from_start};
             }
             {
               size_t cut_from_start{0};
@@ -112,7 +117,7 @@ ini::Document ini::Load(istream &input)
                 }
               }
 
-              lexems.first = string{&lexems.first[cut_from_start], cut_from_end + 1};
+              lexems.first = string{&lexems.first[cut_from_start], cut_from_end + 1 - cut_from_start};
             }
             break;
           }
@@ -138,7 +143,7 @@ ini::Document ini::Load(istream &input)
     }
     else if (!lexems.second.empty())
     {
-      section_ptr->operator[](lexems.first) = lexems.second;
+      section_ptr->insert({lexems.first, lexems.second});
     }
   }
 
