@@ -64,6 +64,56 @@ ini::Document ini::Load(istream &input)
             lexem_start = i;
             lexems.first = string{&line[0], &line[lexem_start]};
             lexems.second = string{&line[lexem_start + 1], &line[line.size()]};
+            {
+              size_t cut_from_start{0};
+              size_t cut_from_end{lexems.second.size() - 1};
+
+              for (size_t i = 0; i < lexems.second.size(); ++i)
+              {
+                char c1 = lexems.second[i];
+                if (c1 != ' ')
+                {
+                  cut_from_start = i;
+                  break;
+                }
+              }
+              for (size_t i = lexems.second.size(); i != 0; --i)
+              {
+                char c1 = lexems.second[i - 1];
+                if (c1 != ' ')
+                {
+                  cut_from_end = i - 1;
+                  break;
+                }
+              }
+
+              lexems.second = string{&lexems.second[cut_from_start], cut_from_end + 1};
+            }
+            {
+              size_t cut_from_start{0};
+              size_t cut_from_end{lexems.first.size() - 1};
+
+              for (size_t i = 0; i < lexems.first.size(); ++i)
+              {
+                char c1 = lexems.first[i];
+                if (c1 != ' ')
+                {
+                  cut_from_start = i;
+                  break;
+                }
+              }
+              for (size_t i = lexems.first.size(); i != 0; --i)
+              {
+                char c1 = lexems.first[i - 1];
+                if (c1 != ' ')
+                {
+                  cut_from_end = i - 1;
+                  break;
+                }
+              }
+
+              lexems.first = string{&lexems.first[cut_from_start], cut_from_end + 1};
+            }
             break;
           }
         }
