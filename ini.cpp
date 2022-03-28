@@ -27,6 +27,7 @@ ini::Document ini::Load(istream &input)
 
   string added_section_parameter_name{};
   string added_section_parameter_value{};
+  Section *section_ptr(nullptr);
 
   while (getline(input, line))
   {
@@ -81,14 +82,13 @@ ini::Document ini::Load(istream &input)
       }
     }
 
-    if (lexems.second.empty())
+    if (lexems.second.empty() && !lexems.first.empty())
     {
-      document.sections_[lexems.first];
-      last_added = lexems.first;
+      section_ptr = &(document.AddSection(lexems.first));
     }
-    else
+    else if (!lexems.second.empty())
     {
-      document.sections_[last_added][lexems.first] = lexems.second;
+      section_ptr->operator[](lexems.first) = lexems.second;
     }
   }
 
