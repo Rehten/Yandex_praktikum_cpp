@@ -141,8 +141,7 @@ void TransportCatalogue::apply_output_command(ostream &output_stream, const stri
           }
         }
 
-        output_stream << "Theoretical is: " << theoretical_routes_length << endl;
-        output_stream << "Theoretical in Vacuum is: " << 2 * ComputeDistance({0.5, -1.0}, {0.0, -1.1}) << endl;
+        output_stream << "Theoretical in vacuum length is "s << ComputeDistance({0.5, -1.0}, {0.0, -1.1}) << endl;
 
         output_stream << routes_count << " stops on route, "s
                       << unique_routes_count << " unique stops, "s
