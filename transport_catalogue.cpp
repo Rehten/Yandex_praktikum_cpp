@@ -141,8 +141,6 @@ void TransportCatalogue::apply_output_command(ostream &output_stream, const stri
           }
         }
 
-        output_stream << "Theoretical in vacuum length is "s << ComputeDistance({0.5, -1.0}, {0.0, -1.1}) << endl;
-
         output_stream << routes_count << " stops on route, "s
                       << unique_routes_count << " unique stops, "s
                       << (is_practical_length_can_be_calculated ? practical_routes_length : theoretical_routes_length) << " route length, "s
@@ -286,10 +284,15 @@ vector<string_view> TransportCatalogue::GetMetadataQueryForAddStop(const string_
     {
       if (*iter == ',' || command.end() - iter == 1)
       {
+        if (command.end() - iter == 1)
+        {
+          ++iter;
+        }
+
         ++coordinates_writen_count;
         stop_metadata_query.push_back({&*lexem_begin, static_cast<size_t>(&*iter - &*lexem_begin)});
 
-        if (command.end() - iter == 1)
+        if (command.end() - iter == 0)
         {
           break;
         }
