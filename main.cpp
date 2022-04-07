@@ -67,35 +67,41 @@ TreeNode<T> *begin(TreeNode<T> *node) noexcept
 template<typename T>
 TreeNode<T> *next(TreeNode<T> *node) noexcept
 {
-  if (node->right.get() == nullptr && node->parent->left.get() != node)
+  if (node->right.get() == nullptr && (node->parent && node->parent->left.get() != node))
   {
     return nullptr;
   }
 
-  if (node->parent->left.get() == node)
+  if (node->parent && node->parent->left.get() == node)
   {
     return node->parent;
   }
 
-  if (node->right.get()->right.get() == nullptr)
+  TreeNode<T> *node_copy = node->right.get();
+
+  while (node_copy->left.get())
   {
-    TreeNode<T> *node_copy = node->right.get();
-
-    while (node_copy->left.get())
-    {
-      node_copy = node_copy->left.get();
-    }
-
-    return node_copy;
+    node_copy = node_copy->left.get();
   }
 
-  throw std::runtime_error("Errored Algorithm");
+  return node_copy;
 }
 
 // функция создаёт новый узел с заданным значением и потомками
 TreeNodePtr<int> N(int val, TreeNodePtr<int> &&left = {}, TreeNodePtr<int> &&right = {})
 {
-  return std::make_unique<TreeNode<int>>(val, std::move(left), std::move(right));
+  TreeNode<int> *rslt = new TreeNode(val, std::move(left), std::move(right));
+
+  if (rslt->left)
+  {
+    rslt->left->parent = rslt;
+  }
+
+  if (rslt->right)
+  {
+    rslt->right->parent = rslt;
+  }
+  return std::unique_ptr<TreeNode<int>>(rslt);
 }
 
 int main()
