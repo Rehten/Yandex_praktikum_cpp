@@ -70,7 +70,21 @@ TreeNode<T> *next(TreeNode<T> *node) noexcept
   if (node->parent)
   {
     TreeNode<T> *saved_node{node};
-    bool is_first_iteration(true);
+
+    if (!saved_node->right.get() && node->parent && node->parent->value < node->value)
+    {
+      auto node_copy = node;
+
+      while (node_copy->parent)
+      {
+        node_copy = node_copy->parent;
+      }
+
+      if (node_copy->value < node->value)
+      {
+        return nullptr;
+      }
+    }
 
     Start:
     if (!node->parent)
@@ -84,10 +98,6 @@ TreeNode<T> *next(TreeNode<T> *node) noexcept
     }
     else
     {
-      if (is_first_iteration)
-      {
-        saved_node = node;
-      }
       if (node->right.get() && node->right->value > saved_node->value)
       {
         goto NextNode;
@@ -99,11 +109,6 @@ TreeNode<T> *next(TreeNode<T> *node) noexcept
       else
       {
         node = node->parent;
-      }
-      is_first_iteration = false;
-      if (!saved_node->right.get() && !node->parent)
-      {
-        return nullptr;
       }
       goto Start;
     }
