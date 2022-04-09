@@ -71,34 +71,27 @@ TreeNode<T> *next(TreeNode<T> *node) noexcept
   {
     node = node->right.get();
 
-    while (node->left)
+    while (node->left.get())
     {
       node = node->left.get();
     }
 
     return node;
   }
-  else if (node->parent)
+  else if (node->parent && node->parent->value > node->value)
   {
-    if (node->parent->value > node->value)
-    {
-      return node->parent;
-    }
-    else
-    {
-      auto node_copy = node;
-
-      while (node_copy->parent && node_copy->parent->value < node->value)
-      {
-        node_copy = node_copy->parent;
-      }
-
-      return node_copy->parent;
-    }
+    return node->parent;
   }
   else
   {
-    return nullptr;
+    auto node_copy = node;
+
+    while (node_copy->parent && node_copy->parent->value < node->value)
+    {
+      node_copy = node_copy->parent;
+    }
+
+    return node_copy->parent;
   }
 }
 
