@@ -1,6 +1,7 @@
 #include <cassert>
 #include <iostream>
 #include <memory>
+#include "log_duration.h"
 
 template<typename T>
 struct TreeNode;
@@ -67,70 +68,8 @@ TreeNode<T> *begin(TreeNode<T> *node) noexcept
 template<typename T>
 TreeNode<T> *next(TreeNode<T> *node) noexcept
 {
-  if (node->parent)
-  {
-    TreeNode<T> *saved_node{node};
+  LOG_DURATION(std::to_string(node->value));
 
-    if (!saved_node->right.get() && node->parent && node->parent->value < node->value)
-    {
-      auto node_copy = node;
-
-      while (node_copy->parent)
-      {
-        node_copy = node_copy->parent;
-      }
-
-      if (node_copy->value < node->value)
-      {
-        return nullptr;
-      }
-    }
-
-    Start:
-    if (!node->parent)
-    {
-      goto NoParent;
-    }
-
-    if (!node->right.get() && node->parent->left.get() == node)
-    {
-      return node->parent;
-    }
-    else
-    {
-      if (node->right.get() && node->right->value > saved_node->value)
-      {
-        goto NextNode;
-      }
-      else if (node->parent->value > saved_node->value)
-      {
-        return node->parent;
-      }
-      else
-      {
-        node = node->parent;
-      }
-      goto Start;
-    }
-  }
-  else
-  {
-    NoParent:
-    if (!node->right.get())
-    {
-      return nullptr;
-    }
-
-    NextNode:
-    auto next_node = node->right.get();
-
-    while (next_node->left.get())
-    {
-      next_node = next_node->left.get();
-    }
-
-    return next_node;
-  }
 }
 
 // функция создаёт новый узел с заданным значением и потомками
