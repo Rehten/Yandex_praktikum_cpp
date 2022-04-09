@@ -67,24 +67,65 @@ TreeNode<T> *begin(TreeNode<T> *node) noexcept
 template<typename T>
 TreeNode<T> *next(TreeNode<T> *node) noexcept
 {
-  if (node->right.get() == nullptr && (node->parent && node->parent->left.get() != node))
+  if (node->parent)
   {
-    return nullptr;
-  }
+    TreeNode<T> *saved_node{node};
+    bool is_first_iteration(true);
 
-  if (node->parent && node->parent->left.get() == node)
+    Start:
+    if (!node->parent)
+    {
+      goto NoParent;
+    }
+
+    if (!node->right.get() && node->parent->left.get() == node)
+    {
+      return node->parent;
+    }
+    else
+    {
+      if (is_first_iteration)
+      {
+        saved_node = node;
+      }
+      if (node->right.get() && node->right->value > saved_node->value)
+      {
+        goto NextNode;
+      }
+      else if (node->parent->value > saved_node->value)
+      {
+        return node->parent;
+      }
+      else
+      {
+        node = node->parent;
+      }
+      is_first_iteration = false;
+      if (!saved_node->right.get() && !node->parent)
+      {
+        return nullptr;
+      }
+      goto Start;
+    }
+  }
+  else
   {
-    return node->parent;
+    NoParent:
+    if (!node->right.get())
+    {
+      return nullptr;
+    }
+
+    NextNode:
+    auto next_node = node->right.get();
+
+    while (next_node->left.get())
+    {
+      next_node = next_node->left.get();
+    }
+
+    return next_node;
   }
-
-  TreeNode<T> *node_copy = node->right.get();
-
-  while (node_copy->left.get())
-  {
-    node_copy = node_copy->left.get();
-  }
-
-  return node_copy;
 }
 
 // функция создаёт новый узел с заданным значением и потомками
