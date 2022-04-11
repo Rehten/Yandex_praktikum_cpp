@@ -18,7 +18,7 @@ public:
     }
 
     return {
-      static_cast<int>(image_.size() && image_[0].size()),
+      static_cast<int>(image_[0].size()),
       static_cast<int>(image_.size())
     };
   }
