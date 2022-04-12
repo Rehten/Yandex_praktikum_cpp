@@ -12,7 +12,7 @@ public:
 
   Size GetSize() const
   {
-    if (image_.empty())
+    if (image_.empty() || image_[0].empty())
     {
       return {0, 0};
     }

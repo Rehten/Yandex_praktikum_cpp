@@ -59,12 +59,14 @@ public:
           {
             if (IsPointInEllipse(point, size_))
             {
-              image[position_.y + i][position_.x + j] = texture_->GetPixelColor(point);
+              image[position_.y + i][position_.x + j] =
+                (texture_->GetSize().height >= static_cast<int>(i)) && (texture_->GetSize().width >= static_cast<int>(j)) ? texture_->GetPixelColor(point) : '#';
             }
           }
           else
           {
-            image[position_.y + i][position_.x + j] = texture_->GetPixelColor(point);
+            image[position_.y + i][position_.x + j] =
+              (texture_->GetSize().height >= static_cast<int>(i)) && (texture_->GetSize().width >= static_cast<int>(j)) ? texture_->GetPixelColor(point) : '#';
           }
         }
       }
