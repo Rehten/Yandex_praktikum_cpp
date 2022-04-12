@@ -1,91 +1,106 @@
+#include "canvas.h"
+#include "shapes.h"
+
 #include <cassert>
-#include <iostream>
-#include <map>
-#include <set>
 #include <sstream>
-#include <string>
 
-using namespace std;
+std::unique_ptr<Texture> MakeTextureCow() {
+  Image image = {R"(^__^            )",  //
+                 R"((oo)\_______    )",  //
+                 R"((__)\       )\/\)",  //
+                 R"(    ||----w |   )",  //
+                 R"(    ||     ||   )"};
+  return std::make_unique<Texture>(move(image));
+}
 
-class Synonyms {
-public:
-  void Add(const string& first_word, const string& second_word) {
-    synonyms_[first_word].insert(second_word);
-    synonyms_[second_word].insert(first_word);
-  }
+std::unique_ptr<Texture> MakeTextureSolid(Size size, char pixel) {
+  Image image(size.height, std::string(size.width, pixel));
+  return std::make_unique<Texture>(move(image));
+}
 
-  size_t GetSynonymCount(const string& word) const {
-    if (synonyms_.count(word) != 0) {
-      return synonyms_.at(word).size();
+std::unique_ptr<Texture> MakeTextureCheckers(Size size, char pixel1, char pixel2) {
+  Image image(size.height, std::string(size.width, pixel1));
+
+  for (int i = 0; i < size.height; ++i) {
+    for (int j = 0; j < size.width; ++j) {
+      if ((i + j) % 2 != 0) {
+        image[i][j] = pixel2;
+      }
     }
-    return 0;
   }
 
-  bool AreSynonyms(const string& first_word, const string& second_word) const {
-    return synonyms_.count(first_word)  && synonyms_.at(first_word).count(second_word);
-  }
-
-private:
-  map<string, set<string>> synonyms_;
-};
-
-void TestAddingSynonymsIncreasesTheirCount() {
-  Synonyms synonyms;
-  assert(synonyms.GetSynonymCount("music"s) == 0);
-  assert(synonyms.GetSynonymCount("melody"s) == 0);
-
-  synonyms.Add("music"s, "melody"s);
-  assert(synonyms.GetSynonymCount("music"s) == 1);
-  assert(synonyms.GetSynonymCount("melody"s) == 1);
-
-  synonyms.Add("music"s, "tune"s);
-  assert(synonyms.GetSynonymCount("music"s) == 2);
-  assert(synonyms.GetSynonymCount("tune"s) == 1);
-  assert(synonyms.GetSynonymCount("melody"s) == 1);
+  return std::make_unique<Texture>(move(image));
 }
 
-void TestAreSynonyms() {
-  Synonyms synonyms;
+void TestCpp() {
+  Canvas canvas(Size{77, 17});
 
-  synonyms.Add("music"s, "melody"s);
+  // Буква "C" как разность двух эллипсов, один из которых нарисован цветом фона
+  canvas.AddShape(ShapeType::ELLIPSE, {2, 1}, {30, 15},
+                  MakeTextureCheckers({100, 100}, 'c', 'C'));
+  canvas.AddShape(ShapeType::ELLIPSE, {8, 4}, {30, 9}, MakeTextureSolid({100, 100}, ' '));
 
-  assert(synonyms.AreSynonyms("music"s, "melody"s));
+  // Горизонтальные чёрточки плюсов
+  auto h1 = canvas.AddShape(ShapeType::RECTANGLE, {54, 7}, {22, 3},
+                            MakeTextureSolid({100, 100}, '+'));
+  canvas.DuplicateShape(h1, {30, 7});
+
+  // Вертикальные чёрточки плюсов
+  auto v1 = canvas.DuplicateShape(h1, {62, 3});
+  canvas.ResizeShape(v1, {6, 11});
+  canvas.DuplicateShape(v1, {38, 3});
+
+  std::stringstream output;
+  canvas.Print(output);
+
+  const auto answer
+    = "###############################################################################\n"
+      "#                                                                             #\n"
+      "#            cCcCcCcCcC                                                       #\n"
+      "#        CcCcCcCcCcCcCcCcCc                                                   #\n"
+      "#      cCcCcCcCcCcCcCcCcCcCcC          ++++++                  ++++++         #\n"
+      "#    CcCcCcCcCcCc                      ++++++                  ++++++         #\n"
+      "#   CcCcCcCcC                          ++++++                  ++++++         #\n"
+      "#   cCcCcCc                            ++++++                  ++++++         #\n"
+      "#  cCcCcC                      ++++++++++++++++++++++  ++++++++++++++++++++++ #\n"
+      "#  CcCcCc                      ++++++++++++++++++++++  ++++++++++++++++++++++ #\n"
+      "#  cCcCcC                      ++++++++++++++++++++++  ++++++++++++++++++++++ #\n"
+      "#   cCcCcCc                            ++++++                  ++++++         #\n"
+      "#   CcCcCcCcC                          ++++++                  ++++++         #\n"
+      "#    CcCcCcCcCcCc                      ++++++                  ++++++         #\n"
+      "#      cCcCcCcCcCcCcCcCcCcCcC          ++++++                  ++++++         #\n"
+      "#        CcCcCcCcCcCcCcCcCc                                                   #\n"
+      "#            cCcCcCcCcC                                                       #\n"
+      "#                                                                             #\n"
+      "###############################################################################\n";
+
+  assert(answer == output.str());
 }
 
-void TestSynonyms() {
-  TestAddingSynonymsIncreasesTheirCount();
-  TestAreSynonyms();
+void TestCow() {
+  Canvas canvas{{18, 5}};
+
+  canvas.AddShape(ShapeType::RECTANGLE, {1, 0}, {16, 5}, MakeTextureCow());
+
+  std::stringstream output;
+  canvas.Print(output);
+
+  // clang-format off
+  // Здесь уместно использовать сырые литералы, т.к. в текстуре есть символы '\'
+  const auto answer =
+    R"(####################)""\n"
+    R"(# ^__^             #)""\n"
+    R"(# (oo)\_______     #)""\n"
+    R"(# (__)\       )\/\ #)""\n"
+    R"(#     ||----w |    #)""\n"
+    R"(#     ||     ||    #)""\n"
+    R"(####################)""\n";
+  // clang-format on
+
+  assert(answer == output.str());
 }
 
 int main() {
-  TestSynonyms();
-
-  Synonyms synonyms;
-
-  string line;
-  while (getline(cin, line)) {
-    istringstream command(line);
-    string action;
-    command >> action;
-
-    if (action == "ADD"s) {
-      string first_word, second_word;
-      command >> first_word >> second_word;
-      synonyms.Add(first_word, second_word);
-    } else if (action == "COUNT"s) {
-      string word;
-      command >> word;
-      cout << synonyms.GetSynonymCount(word) << endl;
-    } else if (action == "CHECK"s) {
-      string first_word, second_word;
-      command >> first_word >> second_word;
-      if (synonyms.AreSynonyms(first_word, second_word)) {
-        cout << "YES"s << endl;
-      } else {
-        cout << "NO"s << endl;
-      }
-    } else if (action == "EXIT"s) {
-      break;
-    }
-  }
+  TestCow();
+  TestCpp();
 }
