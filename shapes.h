@@ -44,11 +44,13 @@ public:
   // Части фигуры, выходящие за границы объекта image, должны отбрасываться.
   void Draw(Image &image) const
   {
+    if (!texture_) return;
+
     for (size_t i = 0; i != static_cast<size_t>(size_.height); ++i)
     {
       for (size_t j = 0; j != static_cast<size_t>(size_.width); ++j)
       {
-        if ((position_.y + i < image.size()) && (position_.x + j < image[i].size()))
+        if ((position_.x + static_cast<int>(j) >= 0) && (position_.y + static_cast<int>(i) >= 0) && (position_.y + i < image.size()) && (position_.x + j < image[i].size()))
         {
           Point point{
             static_cast<int>(j),
