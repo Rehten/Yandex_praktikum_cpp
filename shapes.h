@@ -56,15 +56,13 @@ public:
     size_t start_drawing_y = position_.y > 0 ? static_cast<size_t>(position_.y) : 0;
     size_t start_drawing_x = position_.x > 0 ? static_cast<size_t>(position_.x) : 0;
 
-    auto size = texture_ptr_->GetSize();
-
-    size_t end_drawing_y = start_drawing_y + static_cast<size_t>(size.height) <= image_height
+    size_t end_drawing_y = start_drawing_y + static_cast<size_t>(size_.height) <= image_height
                            ?
-                           start_drawing_y + static_cast<size_t>(size.height)
+                           start_drawing_y + static_cast<size_t>(size_.height)
                            : image_height;
-    size_t end_drawing_x = start_drawing_x + static_cast<size_t>(size.width) <= image_width
+    size_t end_drawing_x = start_drawing_x + static_cast<size_t>(size_.width) <= image_width
                            ?
-                           start_drawing_x + static_cast<size_t>(size.width)
+                           start_drawing_x + static_cast<size_t>(size_.width)
                            : image_width;
 
     int texture_displacement_y = -1 * position_.y;

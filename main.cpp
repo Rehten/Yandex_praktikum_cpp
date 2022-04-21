@@ -74,6 +74,9 @@ void TestCpp() {
       "#                                                                             #\n"
       "###############################################################################\n";
 
+  std::cout << answer << std::endl << std::endl;
+  std::cout << output.str() << std::endl << std::endl;
+
   assert(answer == output.str());
 }
 

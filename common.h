@@ -44,5 +44,5 @@ inline bool IsPointInEllipse(Point p, Size size)
 
 inline bool IsPointInRectangle(Point p, Size size)
 {
-  return (p.x >= 0) && (p.y >= 0) && (p.x <= size.width) && (p.y <= size.height);
+  return (p.x >= 0) && (p.y >= 0) && (p.x < size.width) && (p.y < size.height);
 }
