@@ -80,7 +80,7 @@ public:
 
         if (is_texture_drawed)
         {
-          image[i][j] = texture_ptr_->GetPixelColor(point);
+          image[i][j] = texture_ptr_ ? texture_ptr_->GetPixelColor(point) : '.';
         }
       }
     }
