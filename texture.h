@@ -4,6 +4,8 @@
 
 class Texture
 {
+private:
+  static const char default_color_ = '.';
 public:
   explicit Texture(Image image)
     : image_(std::move(image))
@@ -12,20 +14,30 @@ public:
 
   Size GetSize() const
   {
-    if (image_.empty() || image_[0].empty())
-    {
-      return {0, 0};
-    }
-
-    return {
-      static_cast<int>(image_[0].size()),
-      static_cast<int>(image_.size())
-    };
+    return {image_.size() ? static_cast<int>(image_[0].size()) : 0, static_cast<int>(image_.size())};
   }
 
   char GetPixelColor(Point p) const
   {
-    return image_[p.y][p.x];
+    size_t x = static_cast<size_t>(p.x);
+    size_t y = static_cast<size_t>(p.y);
+
+    if (
+      image_.empty()
+      ||
+      (x >= image_[0].size())
+      ||
+      (y >= image_.size())
+      ||
+      (p.x < 0)
+      ||
+      (p.y < 0)
+      )
+    {
+      return default_color_;
+    }
+
+    return image_[y][x];
   }
 
 private:

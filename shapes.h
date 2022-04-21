@@ -12,14 +12,15 @@ enum class ShapeType
 
 class Shape
 {
+private:
   ShapeType shape_type_;
   Point position_;
   Size size_;
-  std::shared_ptr<Texture> texture_;
+  std::shared_ptr<Texture> texture_ptr_;
 public:
   // Фигура после создания имеет нулевые координаты и размер,
   // а также не имеет текстуры
-  explicit Shape(ShapeType type): shape_type_(type)
+  explicit Shape(ShapeType type) : shape_type_(type)
   {}
 
   void SetPosition(Point pos)
@@ -34,7 +35,7 @@ public:
 
   void SetTexture(std::shared_ptr<Texture> texture)
   {
-    texture_ = texture;
+    texture_ptr_ = texture;
   }
 
   // Рисует фигуру на указанном изображении
@@ -44,33 +45,41 @@ public:
   // Части фигуры, выходящие за границы объекта image, должны отбрасываться.
   void Draw(Image &image) const
   {
-    if (!texture_) return;
+    size_t image_height = image.size();
+    size_t image_width = image.empty() ? 0 : image[0].size();
 
-    for (size_t i = 0; i != static_cast<size_t>(size_.height); ++i)
+    if ((position_.y > static_cast<int>(image_height)) || (position_.x > static_cast<int>(image_width)))
     {
-      for (size_t j = 0; j != static_cast<size_t>(size_.width); ++j)
-      {
-        if ((position_.x + static_cast<int>(j) >= 0) && (position_.y + static_cast<int>(i) >= 0) && (position_.y + i < image.size()) && (position_.x + j < image[i].size()))
-        {
-          Point point{
-            static_cast<int>(j),
-            static_cast<int>(i)
-          };
+      return;
+    }
 
-          if (shape_type_ == ShapeType::ELLIPSE)
+    size_t start_drawing_y = position_.y > 0 ? static_cast<size_t>(position_.y) : 0;
+    size_t start_drawing_x = position_.x > 0 ? static_cast<size_t>(position_.x) : 0;
+
+    auto size = texture_ptr_->GetSize();
+
+    size_t end_drawing_y = start_drawing_y + static_cast<size_t>(size.height) <= image_height
+                           ?
+                           start_drawing_y + static_cast<size_t>(size.height)
+                           : image_height;
+    size_t end_drawing_x = start_drawing_x + static_cast<size_t>(size.width) <= image_width
+                           ?
+                           start_drawing_x + static_cast<size_t>(size.width)
+                           : image_width;
+
+    int texture_displacement_y = -1 * position_.y;
+    int texture_displacement_x = -1 * position_.x;
+
+    for (size_t i = start_drawing_y; i != end_drawing_y; ++i)
+    {
+      for (size_t j = start_drawing_x; j != end_drawing_x; ++j)
+      {
+        image[i][j] = texture_ptr_->GetPixelColor(
           {
-            if (IsPointInEllipse(point, size_))
-            {
-              image[position_.y + i][position_.x + j] =
-                (texture_->GetSize().height >= static_cast<int>(i)) && (texture_->GetSize().width >= static_cast<int>(j)) ? texture_->GetPixelColor(point) : '#';
-            }
+            static_cast<int>(j) + texture_displacement_x,
+            static_cast<int>(i) + texture_displacement_y
           }
-          else
-          {
-            image[position_.y + i][position_.x + j] =
-              (texture_->GetSize().height >= static_cast<int>(i)) && (texture_->GetSize().width >= static_cast<int>(j)) ? texture_->GetPixelColor(point) : '#';
-          }
-        }
+        );
       }
     }
   }
