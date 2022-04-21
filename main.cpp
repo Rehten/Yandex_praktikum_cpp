@@ -96,9 +96,6 @@ void TestCow() {
     R"(#     ||     ||    #)""\n"
     R"(####################)""\n";
   // clang-format on
-  auto aaa =        output.str();
-  auto bbb = std::string(answer);
-
   assert(answer == output.str());
 }
 

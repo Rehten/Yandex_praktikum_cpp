@@ -74,12 +74,16 @@ public:
     {
       for (size_t j = start_drawing_x; j != end_drawing_x; ++j)
       {
-        image[i][j] = texture_ptr_->GetPixelColor(
-          {
-            static_cast<int>(j) + texture_displacement_x,
-            static_cast<int>(i) + texture_displacement_y
-          }
-        );
+        Point point{
+          static_cast<int>(j) + texture_displacement_x,
+          static_cast<int>(i) + texture_displacement_y
+        };
+        bool is_texture_drawed = shape_type_ == ShapeType::RECTANGLE ? IsPointInRectangle(point, size_) : IsPointInEllipse(point, size_);
+
+        if (is_texture_drawed)
+        {
+          image[i][j] = texture_ptr_->GetPixelColor(point);
+        }
       }
     }
   }
