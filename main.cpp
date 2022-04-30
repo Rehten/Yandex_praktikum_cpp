@@ -1,108 +1,61 @@
-#include "canvas.h"
-#include "shapes.h"
+#define _USE_MATH_DEFINES
+#include "svg.h"
 
-#include <cassert>
-#include <sstream>
+#include <cmath>
 
-std::unique_ptr<Texture> MakeTextureCow() {
-  Image image = {R"(^__^            )",  //
-                 R"((oo)\_______    )",  //
-                 R"((__)\       )\/\)",  //
-                 R"(    ||----w |   )",  //
-                 R"(    ||     ||   )"};
-  return std::make_unique<Texture>(move(image));
-}
+using namespace std::literals;
+using namespace svg;
 
-std::unique_ptr<Texture> MakeTextureSolid(Size size, char pixel) {
-  Image image(size.height, std::string(size.width, pixel));
-  return std::make_unique<Texture>(move(image));
-}
+/*
+Пример использования библиотеки. Он будет компилироваться и работать, когда вы реализуете
+все классы библиотеки.
+*/
 
-std::unique_ptr<Texture> MakeTextureCheckers(Size size, char pixel1, char pixel2) {
-  Image image(size.height, std::string(size.width, pixel1));
+namespace {
 
-  for (int i = 0; i < size.height; ++i) {
-    for (int j = 0; j < size.width; ++j) {
-      if ((i + j) % 2 != 0) {
-        image[i][j] = pixel2;
-      }
-    }
-  }
+//Polyline CreateStar(Point center, double outer_rad, double inner_rad, int num_rays) {
+//    Polyline polyline;
+//    for (int i = 0; i <= num_rays; ++i) {
+//        double angle = 2 * M_PI * (i % num_rays) / num_rays;
+//        polyline.AddPoint({center.x + outer_rad * sin(angle), center.y - outer_rad * cos(angle)});
+//        if (i == num_rays) {
+//            break;
+//        }
+//        angle += M_PI / num_rays;
+//        polyline.AddPoint({center.x + inner_rad * sin(angle), center.y - inner_rad * cos(angle)});
+//    }
+//    return polyline;
+//}
 
-  return std::make_unique<Texture>(move(image));
-}
+// Выводит приветствие, круг и звезду
+//void DrawPicture() {
+//    Document doc;
+//    doc.Add(Circle().SetCenter({20, 20}).SetRadius(10));
+//    doc.Add(Text()
+//                .SetFontFamily("Verdana"s)
+//                .SetPosition({35, 20})
+//                .SetOffset({0, 6})
+//                .SetFontSize(12)
+//                .SetFontWeight("bold"s)
+//                .SetData("Hello C++"s));
+//    doc.Add(CreateStar({20, 50}, 10, 5, 5));
+//    doc.Render(std::cout);
+//}
 
-void TestCpp() {
-  Canvas canvas(Size{77, 17});
-
-  // Буква "C" как разность двух эллипсов, один из которых нарисован цветом фона
-  canvas.AddShape(ShapeType::ELLIPSE, {2, 1}, {30, 15},
-                  MakeTextureCheckers({100, 100}, 'c', 'C'));
-  canvas.AddShape(ShapeType::ELLIPSE, {8, 4}, {30, 9}, MakeTextureSolid({100, 100}, ' '));
-
-  // Горизонтальные чёрточки плюсов
-  auto h1 = canvas.AddShape(ShapeType::RECTANGLE, {54, 7}, {22, 3},
-                            MakeTextureSolid({100, 100}, '+'));
-  canvas.DuplicateShape(h1, {30, 7});
-
-  // Вертикальные чёрточки плюсов
-  auto v1 = canvas.DuplicateShape(h1, {62, 3});
-  canvas.ResizeShape(v1, {6, 11});
-  canvas.DuplicateShape(v1, {38, 3});
-
-  std::stringstream output;
-  canvas.Print(output);
-
-  const auto answer
-    = "###############################################################################\n"
-      "#                                                                             #\n"
-      "#            cCcCcCcCcC                                                       #\n"
-      "#        CcCcCcCcCcCcCcCcCc                                                   #\n"
-      "#      cCcCcCcCcCcCcCcCcCcCcC          ++++++                  ++++++         #\n"
-      "#    CcCcCcCcCcCc                      ++++++                  ++++++         #\n"
-      "#   CcCcCcCcC                          ++++++                  ++++++         #\n"
-      "#   cCcCcCc                            ++++++                  ++++++         #\n"
-      "#  cCcCcC                      ++++++++++++++++++++++  ++++++++++++++++++++++ #\n"
-      "#  CcCcCc                      ++++++++++++++++++++++  ++++++++++++++++++++++ #\n"
-      "#  cCcCcC                      ++++++++++++++++++++++  ++++++++++++++++++++++ #\n"
-      "#   cCcCcCc                            ++++++                  ++++++         #\n"
-      "#   CcCcCcCcC                          ++++++                  ++++++         #\n"
-      "#    CcCcCcCcCcCc                      ++++++                  ++++++         #\n"
-      "#      cCcCcCcCcCcCcCcCcCcCcC          ++++++                  ++++++         #\n"
-      "#        CcCcCcCcCcCcCcCcCc                                                   #\n"
-      "#            cCcCcCcCcC                                                       #\n"
-      "#                                                                             #\n"
-      "###############################################################################\n";
-
-//  std::cout << answer << std::endl << std::endl;
-//  std::cout << output.str() << std::endl << std::endl;
-
-  assert(answer == output.str());
-}
-
-void TestCow() {
-  Canvas canvas{{18, 5}};
-
-  canvas.AddShape(ShapeType::RECTANGLE, {1, 0}, {16, 5}, MakeTextureCow());
-
-  std::stringstream output;
-  canvas.Print(output);
-
-  // clang-format off
-  // Здесь уместно использовать сырые литералы, т.к. в текстуре есть символы '\'
-  const auto answer =
-    R"(####################)""\n"
-    R"(# ^__^             #)""\n"
-    R"(# (oo)\_______     #)""\n"
-    R"(# (__)\       )\/\ #)""\n"
-    R"(#     ||----w |    #)""\n"
-    R"(#     ||     ||    #)""\n"
-    R"(####################)""\n";
-  // clang-format on
-  assert(answer == output.str());
-}
+}  // namespace
 
 int main() {
-  TestCow();
-  TestCpp();
+  Document doc;
+  doc.Add(Circle().SetCenter({20, 20}).SetRadius(10));
+  doc.Render(std::cout);
+
+  std::cout << "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>"sv << std::endl;
+  std::cout << "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\">"sv << std::endl;
+
+  Circle c;
+  c.SetCenter({20, 20}).SetRadius(10);
+  RenderContext ctx(std::cout, 2, 2);
+  c.Render(ctx);
+
+  std::cout << "</svg>"sv;
 }
