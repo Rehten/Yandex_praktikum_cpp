@@ -124,6 +124,8 @@ class Text : public Object {
  private:
   void RenderObject(const RenderContext &context) const override;
 
+  std::string GetSanitizedText(const std::string_view text) const;
+
   Point pos_;
   Point offset_;
   uint32_t size_;

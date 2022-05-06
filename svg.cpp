@@ -2,7 +2,8 @@
 
 namespace svg {
 
-using namespace std::literals;
+using namespace std;
+using namespace literals;
 
 void Object::Render(const RenderContext &context) const {
   context.RenderIndent();
@@ -10,7 +11,7 @@ void Object::Render(const RenderContext &context) const {
   // Делегируем вывод тега своим подклассам
   RenderObject(context);
 
-  context.out << std::endl;
+  context.out << endl;
 }
 
 // ---------- Circle ------------------
@@ -33,7 +34,7 @@ void Circle::RenderObject(const RenderContext &context) const {
 }
 
 Polyline &Polyline::AddPoint(Point point) {
-  points_.push_back(std::move(point));
+  points_.push_back(move(point));
 
   return *this;
 }
@@ -69,18 +70,18 @@ Text &Text::SetFontSize(uint32_t size) {
 
   return *this;
 }
-Text &Text::SetFontFamily(std::string font_family) {
+Text &Text::SetFontFamily(string font_family) {
   font_family_ = font_family;
 
   return *this;
 }
-Text &Text::SetFontWeight(const std::string &font_weight) {
+Text &Text::SetFontWeight(const string &font_weight) {
   font_weight_ = font_weight;
 
   return *this;
 }
-Text &Text::SetData(std::string data) {
-  data_ = std::move(data);
+Text &Text::SetData(string data) {
+  data_ = move(data);
 
   return *this;
 }
@@ -93,22 +94,57 @@ void Text::RenderObject(const RenderContext &context) const {
 	  << "\" font-size=\"" << size_
 	  << "\" font-family=\"" << font_family_
 	  << "\" font-weight=\"" << font_weight_
-  	  << "\" >" << data_ << "</text>";
+	  << "\">" << GetSanitizedText(data_) << "</text>";
+}
+string Text::GetSanitizedText(const string_view text) const {
+  string rslt;
+  rslt.reserve(text.size());
+
+  for (char c: text) {
+	if (c == '"') {
+	  rslt += "&quot;"s;
+	  continue;
+	}
+
+	if (c == '\'') {
+	  rslt += "&apos;"s;
+	  continue;
+	}
+
+	if (c == '&') {
+	  rslt += "&amp;"s;
+	  continue;
+	}
+
+	if (c == '<') {
+	  rslt += "&lt;"s;
+	  continue;
+	}
+
+	if (c == '>') {
+	  rslt += "&gt;"s;
+	  continue;
+	}
+
+	rslt += c;
+  }
+
+  return rslt;
 }
 
 Document::Document() = default;
 Document::Document(RenderContext ctx) : ctx_(ctx) {}
 
-void Document::AddPtr(std::unique_ptr<Object> &&obj) {
-  objects_ptrs_.push_back(std::move(obj));
+void Document::AddPtr(unique_ptr<Object> &&obj) {
+  objects_ptrs_.push_back(move(obj));
 }
-void Document::Render(std::ostream &out) const {
+void Document::Render(ostream &out) const {
   RenderContext render_context(out);
 
-  out << "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>"sv << std::endl;
-  out << "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\">"sv << std::endl;
+  out << "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>"sv << endl;
+  out << "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\">"sv << endl;
 
-  for (auto &obj_ptr : objects_ptrs_) {
+  for (auto &obj_ptr: objects_ptrs_) {
 	obj_ptr->Render(render_context);
   }
 
