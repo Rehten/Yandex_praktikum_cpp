@@ -87,17 +87,28 @@ Text &Text::SetData(string data) {
 }
 void Text::RenderObject(const RenderContext &context) const {
   auto &out = context.out;
-  out << "<text x=\"" << pos_.x
-	  << "\" y=\"" << pos_.y
-	  << "\" dx=\"" << offset_.x
-	  << "\" dy=\"" << offset_.y
-	  << "\" font-size=\"" << size_
-	  << "\" font-family=\"" << font_family_
-	  << "\" font-weight=\"" << font_weight_
-	  << "\">" << GetSanitizedText(data_) << "</text>";
+
+  out << "<text"s;
+  if (pos_.has_value()) {
+	out << " x=\"" << pos_.value().x << "\""s;
+	out << " y=\"" << pos_.value().y << "\""s;
+  }
+  if (offset_.has_value()) {
+	out << " dx=\"" << offset_.value().x << "\""s;
+	out << " dy=\"" << offset_.value().y << "\""s;
+  }
+  out << " font-size=\"" << size_.value() << "\""s;
+  if (font_family_.has_value()) out << " font-family=\"" << font_family_.value() << "\""s;
+  if (font_weight_.has_value()) out << " font-weight=\"" << font_weight_.value() << "\""s;
+
+  out << ">";
+  if (data_.has_value()) {
+	out << GetSanitizedText(data_.value());
+  }
+  out << "</text>";
 }
 string Text::GetSanitizedText(const string_view text) const {
-  string rslt;
+  string rslt{};
   rslt.reserve(text.size());
 
   for (char c: text) {

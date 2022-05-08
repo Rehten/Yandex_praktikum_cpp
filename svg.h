@@ -5,6 +5,7 @@
 #include <memory>
 #include <vector>
 #include <string>
+#include <optional>
 
 namespace svg {
 
@@ -126,12 +127,12 @@ class Text : public Object {
 
   std::string GetSanitizedText(const std::string_view text) const;
 
-  Point pos_;
-  Point offset_;
-  uint32_t size_;
-  std::string font_family_;
-  std::string font_weight_;
-  std::string data_;
+  std::optional<Point> pos_;
+  std::optional<Point> offset_;
+  std::optional<uint32_t> size_ = 1;
+  std::optional<std::string> font_family_;
+  std::optional<std::string> font_weight_;
+  std::optional<std::string> data_;
 };
 
 class Document {
