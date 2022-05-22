@@ -89,6 +89,11 @@ class PathProps {
 
 	return AsOwner();
   }
+  Owner &SetStrokeWidth(int stroke_width) {
+	stroke_width_ = std::to_string(stroke_width);
+
+	return AsOwner();
+  }
   Owner &SetStrokeLineCap(StrokeLineCap stroke_line_cap) {
 	stroke_line_cap_ = stroke_line_cap;
 

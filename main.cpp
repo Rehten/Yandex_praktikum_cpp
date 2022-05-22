@@ -70,19 +70,6 @@ class Snowman : public Drawable {
 
 } // namespace shapes
 
-void DrawPicture() {
-    Document doc;
-    doc.Add(Circle().SetCenter({20, 20}).SetRadius(10));
-    doc.Add(Text()
-                .SetFontFamily("Verdana"s)
-                .SetPosition({35, 20})
-                .SetOffset({0, 6})
-                .SetFontSize(12)
-                .SetFontWeight("bold"s)
-                .SetData("Hello C++"s));
-    doc.Add(CreateStar({20, 50}, 10, 5, 5));
-    doc.Render(std::cout);
-}
 
 int main() {
   using namespace svg;
@@ -95,7 +82,6 @@ int main() {
   picture.emplace_back(make_unique<Snowman>(Point{30, 20}, 10.0));
 
   svg::Document doc;
-  DrawPicture(picture, doc);
 
   const Text base_text =  //
 	  Text()
