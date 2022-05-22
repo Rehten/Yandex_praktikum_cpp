@@ -51,7 +51,11 @@ class Star : public Drawable {
 	num_rays_(num_rays) {}
 
   void Draw(svg::ObjectContainer &container) const override {
-	container.Add(CreateStar(center_, outer_radius_, inner_radius_, num_rays_));
+	container.Add(
+		CreateStar(center_, outer_radius_, inner_radius_, num_rays_)
+		.SetFillColor("red"s)
+		.SetStrokeColor("black"s)
+		);
   }
 };
 
@@ -62,9 +66,9 @@ class Snowman : public Drawable {
   Snowman(svg::Point head_center, double head_radius) : head_center_(head_center), head_radius_(head_radius) {}
 
   void Draw(svg::ObjectContainer &container) const override {
-	container.Add(Circle().SetCenter({ head_center_.x, head_center_.y + 5 * head_radius_ }).SetRadius(head_radius_ * 2));
-	container.Add(Circle().SetCenter({ head_center_.x, head_center_.y + 2 * head_radius_ }).SetRadius(head_radius_ * 1.5));
-	container.Add(Circle().SetCenter(head_center_).SetRadius(head_radius_));
+	container.Add(Circle().SetCenter({ head_center_.x, head_center_.y + 5 * head_radius_ }).SetRadius(head_radius_ * 2).SetFillColor("rgb(240,240,240)"s).SetStrokeColor("black"s));
+	container.Add(Circle().SetCenter({ head_center_.x, head_center_.y + 2 * head_radius_ }).SetRadius(head_radius_ * 1.5).SetFillColor("rgb(240,240,240)"s).SetStrokeColor("black"s));
+	container.Add(Circle().SetCenter(head_center_).SetRadius(head_radius_).SetFillColor("rgb(240,240,240)"s).SetStrokeColor("black"s));
   }
 };
 

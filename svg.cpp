@@ -23,13 +23,13 @@ std::unordered_map<StrokeLineJoin, std::string> strlnjn_to_key = {
 std::ostream &operator <<(std::ostream &os, StrokeLineCap cap) {
   if (!strlncp_to_key.count(cap)) throw std::runtime_error("Not valid cap");
 
-  return os;
+  return os << strlncp_to_key[cap];
 }
 
 std::ostream &operator <<(std::ostream &os, StrokeLineJoin join) {
   if (!strlnjn_to_key.count(join)) throw std::runtime_error("Not valid join");
 
-  return os;
+  return os << strlnjn_to_key[join];
 }
 
 void Object::Render(const RenderContext &context) const {
