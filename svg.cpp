@@ -5,6 +5,33 @@ namespace svg {
 using namespace std;
 using namespace literals;
 
+std::unordered_map<StrokeLineCap, std::string> strlncp_to_key = {
+	{StrokeLineCap::BUTT, "butt"},
+	{StrokeLineCap::ROUND, "round"},
+	{StrokeLineCap::SQUARE, "square"},
+};
+
+std::unordered_map<StrokeLineJoin, std::string> strlnjn_to_key = {
+	{StrokeLineJoin::ARCS, "arcs"},
+	{StrokeLineJoin::BEVEL, "bevel"},
+	{StrokeLineJoin::MITER, "miter"},
+	{StrokeLineJoin::MITER_CLIP, "miter-clip"},
+	{StrokeLineJoin::ROUND, "round"},
+};
+
+
+std::ostream &operator <<(std::ostream &os, StrokeLineCap cap) {
+  if (!strlncp_to_key.count(cap)) throw std::runtime_error("Not valid cap");
+
+  return os;
+}
+
+std::ostream &operator <<(std::ostream &os, StrokeLineJoin join) {
+  if (!strlnjn_to_key.count(join)) throw std::runtime_error("Not valid join");
+
+  return os;
+}
+
 void Object::Render(const RenderContext &context) const {
   context.RenderIndent();
 
@@ -28,7 +55,10 @@ Circle &Circle::SetRadius(double radius) {
 
 void Circle::RenderObject(const RenderContext &context) const {
   auto &out = context.out;
-  out << "<circle cx=\""sv << center_.x << "\" cy=\""sv << center_.y << "\" "sv;
+
+  out << "<circle"sv;
+  RenderProps(out);
+  out << " cx=\""sv << center_.x << "\" cy=\""sv << center_.y << "\" "sv;
   out << "r=\""sv << radius_ << "\" "sv;
   out << "/>"sv;
 }
@@ -43,8 +73,11 @@ size_t Polyline::GetSize() const {
 }
 void Polyline::RenderObject(const RenderContext &context) const {
   auto &out = context.out;
-  out << "<polyline points=\"";
+  out << "<polyline";
 
+  RenderProps(out);
+
+  out << " points=\"";
   for (size_t i = 0; i != points_.size(); ++i) {
 	if (i) {
 	  out << " ";
@@ -89,6 +122,9 @@ void Text::RenderObject(const RenderContext &context) const {
   auto &out = context.out;
 
   out << "<text"s;
+
+  RenderProps(out);
+
   if (pos_.has_value()) {
 	out << " x=\"" << pos_.value().x << "\""s;
 	out << " y=\"" << pos_.value().y << "\""s;
