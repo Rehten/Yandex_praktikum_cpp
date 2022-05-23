@@ -1,3 +1,5 @@
+#include <variant>
+
 #include "svg.h"
 
 namespace svg {

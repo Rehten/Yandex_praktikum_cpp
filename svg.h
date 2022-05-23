@@ -8,10 +8,72 @@
 #include <optional>
 #include <unordered_map>
 #include <exception>
+#include <variant>
 
 namespace svg {
 
 const std::string NoneColor = "none";
+
+struct Rgb {
+  uint8_t red;
+  uint8_t green;
+  uint8_t blue;
+
+  Rgb() : Rgb(0, 0, 0) {}
+  Rgb(uint8_t red, uint8_t green, uint8_t blue) : red(red), green(green), blue(blue) {}
+};
+struct Rgba : public Rgb {
+  double alpha;
+
+  Rgba() : Rgb(), alpha(0) {}
+  Rgba(uint8_t red, uint8_t green, uint8_t blue, double alpha) : Rgb(red, green, blue), alpha(alpha) {}
+};
+
+using Color = std::variant<std::monostate, std::string, Rgb, Rgba>;
+
+class ColorStringifier {
+ public:
+  std::string operator()(std::monostate) {
+	return "none";
+  }
+  std::string operator()(const std::string &str) {
+	return str;
+  }
+  std::string operator()(Rgb clr) {
+	std::string rslt;
+	rslt.reserve(17);
+
+	rslt += "rgb(";
+	rslt += std::to_string(clr.red);
+	rslt += ",";
+	rslt += std::to_string(clr.green);
+	rslt += ",";
+	rslt += std::to_string(clr.blue);
+	rslt += ")";
+
+	return rslt;
+  }
+  std::string operator()(Rgba clr) {
+	std::string rslt;
+	rslt.reserve(21);
+
+	rslt += "rgba(";
+	rslt += std::to_string(clr.red);
+	rslt += ",";
+	rslt += std::to_string(clr.green);
+	rslt += ",";
+	rslt += std::to_string(clr.blue);
+	rslt += ",";
+	rslt += std::to_string(clr.alpha);
+	rslt += ")";
+
+	return rslt;
+  }
+};
+
+std::ostream &operator<<(std::ostream &os, Color &color) {
+  return os << std::visit(ColorStringifier(), color);
+}
 
 enum class StrokeLineCap {
   BUTT,
@@ -74,15 +136,21 @@ class PathProps {
   	std::optional<StrokeLineCap> stroke_line_cap_ = std::nullopt;
   	std::optional<StrokeLineJoin> stroke_line_join_ = std::nullopt;
  public:
+  Owner &SetFillColor(Color &fill_color) {
+	fill_color_ = std::visit(ColorStringifier(), fill_color);
+
+	return AsOwner();
+  }
   Owner &SetFillColor(const std::string &fill_color) {
-	fill_color_ = fill_color;
+	return SetFillColor({fill_color});
+  }
+  Owner &SetStrokeColor(Color &stroke_color) {
+	stroke_color_ = std::visit(ColorStringifier(), stroke_color);
 
 	return AsOwner();
   }
   Owner &SetStrokeColor(const std::string &stroke_color) {
-	stroke_color_ = stroke_color;
-
-	return AsOwner();
+	return SetStrokeColor({stroke_color});
   }
   Owner &SetStrokeWidth(const std::string &stroke_width) {
 	stroke_width_ = stroke_width;
