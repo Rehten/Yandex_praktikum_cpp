@@ -80,29 +80,37 @@ class Snowman : public Drawable {
 
 } // namespace shapes
 
+// Выполняет линейную интерполяцию значения от from до to в зависимости от параметра t.
+uint8_t Lerp(uint8_t from, uint8_t to, double t) {
+  return static_cast<uint8_t>(std::round((to - from) * t + from));
+}
 
 int main() {
   using namespace svg;
   using namespace std;
 
-  Color none_color;
-  cout << none_color << endl; // none
+  const uint8_t start_r = 0;
+  const uint8_t end_r = 20;
+  const uint8_t start_g = 255;
+  const uint8_t end_g = 20;
+  const uint8_t start_b = 30;
+  const uint8_t end_b = 150;
 
-  Color purple{"purple"s};
-  cout << purple << endl; // purple
-
-  Color rgb = Rgb{100, 200, 255};
-  cout << rgb << endl; // rgb(100,200,255)
-
-  Color rgba = Rgba{100, 200, 255, 0.5};
-  cout << rgba << endl; // rgba(100,200,255,0.5)
-
-  Circle c;
-  c.SetRadius(3.5).SetCenter({1.0, 2.0});
-  c.SetFillColor(rgba);
-  c.SetStrokeColor(purple);
-
+  const int num_circles = 10;
   Document doc;
-  doc.Add(std::move(c));
+  for (int i = 0; i < num_circles; ++i) {
+	const double t = double(i) / (num_circles - 1);
+
+	const string r = to_string(Lerp(start_r, end_r, t));
+	const string g = to_string(Lerp(start_g, end_g, t));
+	const string b = to_string(Lerp(start_b, end_b, t));
+
+	string fill_color = "rgb("s + r + ","s + g + ","s + b + ")"s;
+	doc.Add(Circle()
+				.SetFillColor(fill_color)
+				.SetStrokeColor("black"s)
+				.SetCenter({i * 20.0 + 40, 40.0})
+				.SetRadius(15));
+  }
   doc.Render(cout);
 }

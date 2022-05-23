@@ -71,7 +71,7 @@ class ColorStringifier {
   }
 };
 
-std::ostream &operator<<(std::ostream &os, Color &color) {
+std::ostream &operator<<(std::ostream &os, const Color &color) {
   return os << std::visit(ColorStringifier(), color);
 }
 
@@ -136,21 +136,15 @@ class PathProps {
   	std::optional<StrokeLineCap> stroke_line_cap_ = std::nullopt;
   	std::optional<StrokeLineJoin> stroke_line_join_ = std::nullopt;
  public:
-  Owner &SetFillColor(Color &fill_color) {
+  Owner &SetFillColor(const Color &fill_color) {
 	fill_color_ = std::visit(ColorStringifier(), fill_color);
 
 	return AsOwner();
   }
-  Owner &SetFillColor(const std::string &fill_color) {
-	return SetFillColor({fill_color});
-  }
-  Owner &SetStrokeColor(Color &stroke_color) {
+  Owner &SetStrokeColor(const Color &stroke_color) {
 	stroke_color_ = std::visit(ColorStringifier(), stroke_color);
 
 	return AsOwner();
-  }
-  Owner &SetStrokeColor(const std::string &stroke_color) {
-	return SetStrokeColor({stroke_color});
   }
   Owner &SetStrokeWidth(const std::string &stroke_width) {
 	stroke_width_ = stroke_width;
