@@ -106,4 +106,20 @@ int main() {
   assert(rgba1.green == 20);
   assert(rgba1.blue == 50);
   assert(rgba1.opacity == 0.3);
+
+  svg::Color color1;                               // none
+  svg::Color color2 = svg::Rgb{215, 30, 25};       // rgb(215,30,25)
+  svg::Color color3 = svg::NoneColor;              // none
+  svg::Color color4 = svg::Rgba{15, 15, 25, 0.7};  // rgba(15,15,25,0.7)
+  svg::Color color5 = "red"s;                      // red
+  svg::Color color6 = svg::Rgb{};                  // rgb(0,0,0)
+  svg::Color color7 = svg::Rgba{};                 // rgba(0,0,0,1.0);
+
+  cout << color1 << endl;
+  cout << color2 << endl;
+  cout << color3 << endl;
+  cout << color4 << endl;
+  cout << color5 << endl;
+  cout << color6 << endl;
+  cout << color7 << endl;
 }

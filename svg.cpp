@@ -42,7 +42,7 @@ std::string ColorStringifier::operator()(Rgba &clr) {
   rslt.reserve(21);
   ostringstream os{};
 
-  os << setprecision(1) << clr.opacity;
+  os << fixed << setprecision(1) << clr.opacity;
 
   rslt += "rgba(";
   rslt += to_string(clr.red);
