@@ -240,12 +240,13 @@ void Document::AddPtr(unique_ptr<Object> &&obj) {
   objects_ptrs_.push_back(move(obj));
 }
 void Document::Render(ostream &out) const {
-  RenderContext render_context(out);
+  RenderContext render_context(out, 2, 1);
 
   out << "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>"sv << endl;
   out << "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\">"sv << endl;
 
   for (auto &obj_ptr: objects_ptrs_) {
+	render_context.RenderIndent();
 	obj_ptr->Render(render_context);
   }
 

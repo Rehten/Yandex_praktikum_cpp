@@ -115,11 +115,34 @@ int main() {
   svg::Color color6 = svg::Rgb{};                  // rgb(0,0,0)
   svg::Color color7 = svg::Rgba{};                 // rgba(0,0,0,1.0);
 
-  cout << color1 << endl;
+  cout << endl << color1 << endl;
   cout << color2 << endl;
   cout << color3 << endl;
   cout << color4 << endl;
   cout << color5 << endl;
   cout << color6 << endl;
   cout << color7 << endl;
+  {
+	// Задаёт цвет в виде трех компонент в таком порядке: red, green, blue
+	svg::Rgb rgb{255, 0, 100};
+	assert(rgb.red == 255);
+	assert(rgb.green == 0);
+	assert(rgb.blue == 100);
+
+// Задаёт цвет по умолчанию: red=0, green=0, blue=0
+	svg::Rgb color;
+	assert(color.red == 0 && color.green == 0 && color.blue == 0);
+  }
+  {
+	// Задаёт цвет в виде четырёх компонент: red, green, blue, opacity
+	svg::Rgba rgba{100, 20, 50, 0.3};
+	assert(rgba.red == 100);
+	assert(rgba.green == 20);
+	assert(rgba.blue == 50);
+	assert(rgba.opacity == 0.3);
+
+// Чёрный непрозрачный цвет: red=0, green=0, blue=0, alpha=1.0
+	svg::Rgba color;
+	assert(color.red == 0 && color.green == 0 && color.blue == 0 && color.opacity == 1.0);
+  }
 }
