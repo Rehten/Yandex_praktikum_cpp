@@ -34,18 +34,18 @@ std::string ColorStringifier::operator()(Rgb &clr) {
 
   return rslt;
 }
-std::string ColorStringifier::operator()(Rgba & clr) {
+std::string ColorStringifier::operator()(Rgba &clr) {
   string rslt;
   rslt.reserve(21);
 
   rslt += "rgba(";
-  rslt += std::to_string(clr.red);
+  rslt += to_string(clr.red);
   rslt += ",";
-  rslt += std::to_string(clr.green);
+  rslt += to_string(clr.green);
   rslt += ",";
-  rslt += std::to_string(clr.blue);
+  rslt += to_string(clr.blue);
   rslt += ",";
-  rslt += std::to_string(clr.opacity);
+  rslt += to_string(clr.opacity);
   rslt += ")";
 
   return rslt;
