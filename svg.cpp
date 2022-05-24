@@ -1,11 +1,58 @@
-#include <variant>
-
 #include "svg.h"
 
 namespace svg {
 
 using namespace std;
 using namespace literals;
+
+std::ostream &operator<<(std::ostream &os, Color color) {
+  return os << visit(ColorStringifier(), color);
+}
+
+bool operator != (Color lhs, const std::string &rhs) {
+  return visit(ColorStringifier(), lhs) != rhs;
+}
+
+bool operator != (Color lhs, std::string &rhs) {
+  return lhs != static_cast<const string &>(rhs);
+}
+
+std::string ColorStringifier::operator()(std::monostate) {
+  return "none"s;
+}
+std::string ColorStringifier::operator()(Rgb &clr) {
+  string rslt;
+  rslt.reserve(17);
+
+  rslt += "rgb(";
+  rslt += std::to_string(clr.red);
+  rslt += ",";
+  rslt += std::to_string(clr.green);
+  rslt += ",";
+  rslt += std::to_string(clr.blue);
+  rslt += ")";
+
+  return rslt;
+}
+std::string ColorStringifier::operator()(Rgba & clr) {
+  string rslt;
+  rslt.reserve(21);
+
+  rslt += "rgba(";
+  rslt += std::to_string(clr.red);
+  rslt += ",";
+  rslt += std::to_string(clr.green);
+  rslt += ",";
+  rslt += std::to_string(clr.blue);
+  rslt += ",";
+  rslt += std::to_string(clr.opacity);
+  rslt += ")";
+
+  return rslt;
+}
+std::string ColorStringifier::operator()(std::string &str) {
+  return str;
+}
 
 std::unordered_map<StrokeLineCap, std::string> strlncp_to_key = {
 	{StrokeLineCap::BUTT, "butt"},
@@ -21,14 +68,13 @@ std::unordered_map<StrokeLineJoin, std::string> strlnjn_to_key = {
 	{StrokeLineJoin::ROUND, "round"},
 };
 
-
-std::ostream &operator <<(std::ostream &os, StrokeLineCap cap) {
+std::ostream &operator<<(std::ostream &os, StrokeLineCap cap) {
   if (!strlncp_to_key.count(cap)) throw std::runtime_error("Not valid cap");
 
   return os << strlncp_to_key[cap];
 }
 
-std::ostream &operator <<(std::ostream &os, StrokeLineJoin join) {
+std::ostream &operator<<(std::ostream &os, StrokeLineJoin join) {
   if (!strlnjn_to_key.count(join)) throw std::runtime_error("Not valid join");
 
   return os << strlnjn_to_key[join];
@@ -59,7 +105,7 @@ void Circle::RenderObject(const RenderContext &context) const {
   auto &out = context.out;
 
   out << "<circle"sv;
-  RenderProps(out);
+  RenderAttrs(out);
   out << " cx=\""sv << center_.x << "\" cy=\""sv << center_.y << "\" "sv;
   out << "r=\""sv << radius_ << "\" "sv;
   out << "/>"sv;
@@ -77,7 +123,7 @@ void Polyline::RenderObject(const RenderContext &context) const {
   auto &out = context.out;
   out << "<polyline";
 
-  RenderProps(out);
+  RenderAttrs(out);
 
   out << " points=\"";
   for (size_t i = 0; i != points_.size(); ++i) {
@@ -125,7 +171,7 @@ void Text::RenderObject(const RenderContext &context) const {
 
   out << "<text"s;
 
-  RenderProps(out);
+  RenderAttrs(out);
 
   if (pos_.has_value()) {
 	out << " x=\"" << pos_.value().x << "\""s;

@@ -12,7 +12,13 @@
 
 namespace svg {
 
-const std::string NoneColor = "none";
+struct Rgb;
+struct Rgba;
+
+using Color = std::variant<std::monostate, Rgb, Rgba, std::string>;
+
+bool operator != (Color, std::string &);
+bool operator != (Color, const std::string &);
 
 struct Rgb {
   uint8_t red;
@@ -22,58 +28,25 @@ struct Rgb {
   Rgb() : Rgb(0, 0, 0) {}
   Rgb(uint8_t red, uint8_t green, uint8_t blue) : red(red), green(green), blue(blue) {}
 };
-struct Rgba : public Rgb {
-  double alpha;
 
-  Rgba() : Rgb(), alpha(0) {}
-  Rgba(uint8_t red, uint8_t green, uint8_t blue, double alpha) : Rgb(red, green, blue), alpha(alpha) {}
+struct Rgba : Rgb {
+  double opacity;
+
+  Rgba() : Rgba(0, 0, 0, 0.0) {}
+  Rgba(uint8_t red, uint8_t green, uint8_t blue, double alpha) : Rgb(red, green, blue), opacity(alpha) {}
 };
 
-using Color = std::variant<std::monostate, std::string, Rgb, Rgba>;
+std::ostream &operator <<(std::ostream &os, Color color);
 
 class ColorStringifier {
  public:
-  std::string operator()(std::monostate) {
-	return "none";
-  }
-  std::string operator()(const std::string &str) {
-	return str;
-  }
-  std::string operator()(Rgb clr) {
-	std::string rslt;
-	rslt.reserve(17);
-
-	rslt += "rgb(";
-	rslt += std::to_string(clr.red);
-	rslt += ",";
-	rslt += std::to_string(clr.green);
-	rslt += ",";
-	rslt += std::to_string(clr.blue);
-	rslt += ")";
-
-	return rslt;
-  }
-  std::string operator()(Rgba clr) {
-	std::string rslt;
-	rslt.reserve(21);
-
-	rslt += "rgba(";
-	rslt += std::to_string(clr.red);
-	rslt += ",";
-	rslt += std::to_string(clr.green);
-	rslt += ",";
-	rslt += std::to_string(clr.blue);
-	rslt += ",";
-	rslt += std::to_string(clr.alpha);
-	rslt += ")";
-
-	return rslt;
-  }
+  std::string operator()(std::monostate);
+  std::string operator()(Rgb &);
+  std::string operator()(Rgba &);
+  std::string operator()(std::string &);
 };
 
-std::ostream &operator<<(std::ostream &os, const Color &color) {
-  return os << std::visit(ColorStringifier(), color);
-}
+const std::string NoneColor = "none";
 
 enum class StrokeLineCap {
   BUTT,
@@ -130,19 +103,19 @@ struct RenderContext {
 
 template<typename Owner>
 class PathProps {
-  	std::optional<std::string> fill_color_ = std::nullopt;
-  	std::optional<std::string> stroke_color_ = std::nullopt;
-  	std::optional<std::string> stroke_width_ = std::nullopt;
-  	std::optional<StrokeLineCap> stroke_line_cap_ = std::nullopt;
-  	std::optional<StrokeLineJoin> stroke_line_join_ = std::nullopt;
+  std::optional<Color> fill_color_ = std::nullopt;
+  std::optional<Color> stroke_color_ = std::nullopt;
+  std::optional<std::string> stroke_width_ = std::nullopt;
+  std::optional<StrokeLineCap> stroke_line_cap_ = std::nullopt;
+  std::optional<StrokeLineJoin> stroke_line_join_ = std::nullopt;
  public:
   Owner &SetFillColor(const Color &fill_color) {
-	fill_color_ = std::visit(ColorStringifier(), fill_color);
+	fill_color_ = fill_color;
 
 	return AsOwner();
   }
   Owner &SetStrokeColor(const Color &stroke_color) {
-	stroke_color_ = std::visit(ColorStringifier(), stroke_color);
+	stroke_color_ = stroke_color;
 
 	return AsOwner();
   }
@@ -167,12 +140,12 @@ class PathProps {
 	return AsOwner();
   }
 
-  void RenderProps(std::ostream &os) const {
-	if (fill_color_.has_value() && (fill_color_ != std::nullopt) && (fill_color_.value() != NoneColor)) os << " fill=\"" << fill_color_.value() << "\"";
-	if (stroke_color_.has_value() && (stroke_color_ != std::nullopt) && (stroke_color_.value() != NoneColor)) os << " stroke=\"" << stroke_color_.value() << "\"";
-	if (stroke_width_.has_value() && (stroke_width_ != std::nullopt)) os << " stroke-width=\"" << stroke_width_.value() << "\"";
-	if (stroke_line_cap_.has_value() && (stroke_line_cap_ != std::nullopt)) os << " stroke-linecap=\"" << stroke_line_cap_.value() << "\"";
-	if (stroke_line_join_.has_value() && (stroke_line_join_ != std::nullopt)) os << " stroke-linejoin=\"" << stroke_line_join_.value() << "\"";
+  void RenderAttrs(std::ostream &os) const {
+	if (fill_color_ && (fill_color_.value() != NoneColor)) os << " fill=\"" << fill_color_.value() << "\"";
+	if (stroke_color_ && (stroke_color_.value() != NoneColor)) os << " stroke=\"" << stroke_color_.value() << "\"";
+	if (stroke_width_) os << " stroke-width=\"" << stroke_width_.value() << "\"";
+	if (stroke_line_cap_) os << " stroke-linecap=\"" << stroke_line_cap_.value() << "\"";
+	if (stroke_line_join_) os << " stroke-linejoin=\"" << stroke_line_join_.value() << "\"";
   }
   virtual ~PathProps() = default;
  private:
