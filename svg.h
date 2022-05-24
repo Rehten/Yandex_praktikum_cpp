@@ -141,8 +141,8 @@ class PathProps {
   }
 
   void RenderAttrs(std::ostream &os) const {
-	if (fill_color_ && (fill_color_.value() != NoneColor)) os << " fill=\"" << fill_color_.value() << "\"";
-	if (stroke_color_ && (stroke_color_.value() != NoneColor)) os << " stroke=\"" << stroke_color_.value() << "\"";
+	if (fill_color_) os << " fill=\"" << fill_color_.value() << "\"";
+	if (stroke_color_) os << " stroke=\"" << stroke_color_.value() << "\"";
 	if (stroke_width_) os << " stroke-width=\"" << stroke_width_.value() << "\"";
 	if (stroke_line_cap_) os << " stroke-linecap=\"" << stroke_line_cap_.value() << "\"";
 	if (stroke_line_join_) os << " stroke-linejoin=\"" << stroke_line_join_.value() << "\"";
