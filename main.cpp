@@ -75,6 +75,16 @@ class Snowman : public Drawable {
 
 } // namespace shapes
 
+// Выполняет линейную интерполяцию значения от from до to в зависимости от параметра t
+uint8_t Lerp(uint8_t from, uint8_t to, double t) {
+  return static_cast<uint8_t>(std::round((to - from) * t + from));
+}
+
+// Выполняет линейную интерполяцию Rgb цвета от from до to в зависимости от параметра t
+svg::Rgb Lerp(svg::Rgb from, svg::Rgb to, double t) {
+  return {Lerp(from.red, to.red, t), Lerp(from.green, to.green, t), Lerp(from.blue, to.blue, t)};
+}
+
 
 int main() {
   using namespace svg;
@@ -144,5 +154,27 @@ int main() {
 // Чёрный непрозрачный цвет: red=0, green=0, blue=0, alpha=1.0
 	svg::Rgba color;
 	assert(color.red == 0 && color.green == 0 && color.blue == 0 && color.opacity == 1.0);
+  }
+  {
+	using namespace svg;
+	using namespace std;
+
+	Rgb start_color{0, 255, 30};
+	Rgb end_color{20, 20, 150};
+
+	const int num_circles = 10;
+	Document doc;
+	for (int i = 0; i < num_circles; ++i) {
+	  const double t = double(i) / (num_circles - 1);
+
+	  const Rgb fill_color = Lerp(start_color, end_color, t);
+
+	  doc.Add(Circle()
+				  .SetFillColor(fill_color)
+				  .SetStrokeColor("black"s)
+				  .SetCenter({i * 20.0 + 40, 40.0})
+				  .SetRadius(15));
+	}
+	doc.Render(cout);
   }
 }
