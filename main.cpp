@@ -1,5 +1,6 @@
 #define _USE_MATH_DEFINES
 #include <cmath>
+#include <assert.h>
 #include "svg.h"
 
 svg::Polyline CreateStar(svg::Point center, double outer_rad, double inner_rad, int num_rays) {
@@ -99,4 +100,10 @@ int main() {
   Document doc;
   doc.Add(std::move(c));
   doc.Render(cout);
+
+  svg::Rgba rgba1{100, 20, 50, 0.3};
+  assert(rgba1.red == 100);
+  assert(rgba1.green == 20);
+  assert(rgba1.blue == 50);
+  assert(rgba1.opacity == 0.3);
 }

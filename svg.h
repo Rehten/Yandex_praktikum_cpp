@@ -30,7 +30,7 @@ struct Rgb {
 };
 
 struct Rgba : Rgb {
-  double opacity;
+  double opacity = 1.0;
 
   Rgba() : Rgba(0, 0, 0, 0.0) {}
   Rgba(uint8_t red, uint8_t green, uint8_t blue, double alpha) : Rgb(red, green, blue), opacity(alpha) {}

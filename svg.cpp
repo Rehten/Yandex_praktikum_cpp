@@ -1,3 +1,6 @@
+#include <iomanip>
+#include <sstream>
+
 #include "svg.h"
 
 namespace svg {
@@ -37,6 +40,9 @@ std::string ColorStringifier::operator()(Rgb &clr) {
 std::string ColorStringifier::operator()(Rgba &clr) {
   string rslt;
   rslt.reserve(21);
+  ostringstream os{};
+
+  os << setprecision(1) << clr.opacity;
 
   rslt += "rgba(";
   rslt += to_string(clr.red);
@@ -45,7 +51,7 @@ std::string ColorStringifier::operator()(Rgba &clr) {
   rslt += ",";
   rslt += to_string(clr.blue);
   rslt += ",";
-  rslt += to_string(clr.opacity);
+  rslt += os.str();
   rslt += ")";
 
   return rslt;
@@ -105,9 +111,9 @@ void Circle::RenderObject(const RenderContext &context) const {
   auto &out = context.out;
 
   out << "<circle"sv;
-  RenderAttrs(out);
   out << " cx=\""sv << center_.x << "\" cy=\""sv << center_.y << "\" "sv;
-  out << "r=\""sv << radius_ << "\" "sv;
+  out << "r=\""sv << radius_ << "\""sv;
+  RenderAttrs(out);
   out << "/>"sv;
 }
 
