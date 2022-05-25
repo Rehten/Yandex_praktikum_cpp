@@ -1,180 +1,264 @@
-#define _USE_MATH_DEFINES
-#include <cmath>
-#include <assert.h>
-#include "svg.h"
+#include <cassert>
+#include <chrono>
+#include <sstream>
+#include <string_view>
 
-svg::Polyline CreateStar(svg::Point center, double outer_rad, double inner_rad, int num_rays) {
-  using namespace svg;
-  Polyline polyline;
-  for (int i = 0; i <= num_rays; ++i) {
-	double angle = 2 * M_PI * (i % num_rays) / num_rays;
-	polyline.AddPoint({center.x + outer_rad * sin(angle), center.y - outer_rad * cos(angle)});
-	if (i == num_rays) {
-	  break;
-	}
-	angle += M_PI / num_rays;
-	polyline.AddPoint({center.x + inner_rad * sin(angle), center.y - inner_rad * cos(angle)});
-  }
-  return polyline;
-}
+#include "json.h"
 
+using namespace json;
 using namespace std::literals;
-using namespace svg;
 
-namespace shapes {
+namespace {
 
-class Triangle : public svg::Drawable {
- public:
-  Triangle(svg::Point p1, svg::Point p2, svg::Point p3)
-	  : p1_(p1), p2_(p2), p3_(p3) {
-  }
+// Ниже даны тесты, проверяющие JSON-библиотеку.
+// Можете воспользоваться ими, чтобы протестировать свой код.
+// Раскомментируйте их по мере работы.
 
-  // Реализует метод Draw интерфейса svg::Drawable
-  void Draw(svg::ObjectContainer &container) const override {
-	container.Add(svg::Polyline().AddPoint(p1_).AddPoint(p2_).AddPoint(p3_).AddPoint(p1_));
-  }
-
- private:
-  svg::Point p1_, p2_, p3_;
-};
-
-class Star : public Drawable {
-  svg::Point center_;
-  double outer_radius_;
-  double inner_radius_;
-  int num_rays_;
- public:
-  Star(svg::Point center, double outer_radius, double inner_radius, int num_rays)
-	  :
-	  center_(center),
-	  outer_radius_(outer_radius),
-	  inner_radius_(inner_radius),
-	  num_rays_(num_rays) {}
-
-  void Draw(svg::ObjectContainer &container) const override {
-	container.Add(
-		CreateStar(center_, outer_radius_, inner_radius_, num_rays_)
-			.SetFillColor("red"s)
-			.SetStrokeColor("black"s)
-	);
-  }
-};
-
-class Snowman : public Drawable {
-  svg::Point head_center_;
-  double head_radius_;
- public:
-  Snowman(svg::Point head_center, double head_radius) : head_center_(head_center), head_radius_(head_radius) {}
-
-  void Draw(svg::ObjectContainer &container) const override {
-	container.Add(Circle().SetCenter({ head_center_.x, head_center_.y + 5 * head_radius_ }).SetRadius(head_radius_ * 2).SetFillColor("rgb(240,240,240)"s).SetStrokeColor("black"s));
-	container.Add(Circle().SetCenter({ head_center_.x, head_center_.y + 2 * head_radius_ }).SetRadius(head_radius_ * 1.5).SetFillColor("rgb(240,240,240)"s).SetStrokeColor("black"s));
-	container.Add(Circle().SetCenter(head_center_).SetRadius(head_radius_).SetFillColor("rgb(240,240,240)"s).SetStrokeColor("black"s));
-  }
-};
-
-} // namespace shapes
-
-// Выполняет линейную интерполяцию значения от from до to в зависимости от параметра t
-uint8_t Lerp(uint8_t from, uint8_t to, double t) {
-  return static_cast<uint8_t>(std::round((to - from) * t + from));
+json::Document LoadJSON(const std::string &s) {
+  std::istringstream strm(s);
+  return json::Load(strm);
 }
 
-// Выполняет линейную интерполяцию Rgb цвета от from до to в зависимости от параметра t
-svg::Rgb Lerp(svg::Rgb from, svg::Rgb to, double t) {
-  return {Lerp(from.red, to.red, t), Lerp(from.green, to.green, t), Lerp(from.blue, to.blue, t)};
+std::string Print(const Node &node) {
+  std::ostringstream out;
+  Print(Document{node}, out);
+  return out.str();
 }
 
+void MustFailToLoad(const std::string &s) {
+  try {
+	LoadJSON(s);
+	std::cerr << "ParsingError exception is expected on '"sv << s << "'"sv << std::endl;
+	assert(false);
+  } catch (const json::ParsingError &) {
+	// ok
+  } catch (const std::exception &e) {
+	std::cerr << "exception thrown: "sv << e.what() << std::endl;
+	assert(false);
+  } catch (...) {
+	std::cerr << "Unexpected error"sv << std::endl;
+	assert(false);
+  }
+}
+
+template<typename Fn>
+void MustThrowLogicError(Fn fn) {
+  try {
+	fn();
+	std::cerr << "logic_error is expected"sv << std::endl;
+	assert(false);
+  } catch (const std::logic_error &) {
+	// ok
+  } catch (const std::exception &e) {
+	std::cerr << "exception thrown: "sv << e.what() << std::endl;
+	assert(false);
+  } catch (...) {
+	std::cerr << "Unexpected error"sv << std::endl;
+	assert(false);
+  }
+}
+
+void TestNull() {
+  Node null_node;
+  assert(null_node.IsNull());
+  assert(!null_node.IsInt());
+  assert(!null_node.IsDouble());
+  assert(!null_node.IsPureDouble());
+  assert(!null_node.IsString());
+  assert(!null_node.IsArray());
+  assert(!null_node.IsMap());
+
+  Node null_node1{nullptr};
+  assert(null_node1.IsNull());
+
+  assert(Print(null_node) == "null"s);
+  assert(null_node == null_node1);
+  assert(!(null_node != null_node1));
+
+  const Node node = LoadJSON("null"s).GetRoot();
+  assert(node.IsNull());
+  assert(node == null_node);
+  // Пробелы, табуляции и символы перевода строки между токенами JSON файла игнорируются
+  assert(LoadJSON(" \t\r\n\n\r null \t\r\n\n\r "s).GetRoot() == null_node);
+}
+
+void TestNumbers() {
+  const Node int_node{42};
+  assert(int_node.IsInt());
+  assert(int_node.AsInt() == 42);
+  // целые числа являются подмножеством чисел с плавающей запятой
+  assert(int_node.IsDouble());
+  // Когда узел хранит int, можно получить соответствующее ему double-значение
+  assert(int_node.AsDouble() == 42.0);
+  assert(!int_node.IsPureDouble());
+  assert(int_node == Node{42});
+  // int и double - разные типы, поэтому не равны, даже когда хранят
+  assert(int_node != Node{42.0});
+
+  const Node dbl_node{123.45};
+  assert(dbl_node.IsDouble());
+  assert(dbl_node.AsDouble() == 123.45);
+  assert(dbl_node.IsPureDouble());  // Значение содержит число с плавающей запятой
+  assert(!dbl_node.IsInt());
+
+  assert(Print(int_node) == "42"s);
+  assert(Print(dbl_node) == "123.45"s);
+  assert(Print(Node{-42}) == "-42"s);
+  assert(Print(Node{-3.5}) == "-3.5"s);
+
+  assert(LoadJSON("42"s).GetRoot() == int_node);
+  assert(LoadJSON("123.45"s).GetRoot() == dbl_node);
+  assert(LoadJSON("0.25"s).GetRoot().AsDouble() == 0.25);
+  assert(LoadJSON("3e5"s).GetRoot().AsDouble() == 3e5);
+  assert(LoadJSON("1.2e-5"s).GetRoot().AsDouble() == 1.2e-5);
+  assert(LoadJSON("1.2e+5"s).GetRoot().AsDouble() == 1.2e5);
+  assert(LoadJSON("-123456"s).GetRoot().AsInt() == -123456);
+  assert(LoadJSON("0").GetRoot() == Node{0});
+  assert(LoadJSON("0.0").GetRoot() == Node{0.0});
+  // Пробелы, табуляции и символы перевода строки между токенами JSON файла игнорируются
+  assert(LoadJSON(" \t\r\n\n\r 0.0 \t\r\n\n\r ").GetRoot() == Node{0.0});
+}
+
+void TestStrings() {
+  Node str_node{"Hello, \"everybody\""s};
+  assert(str_node.IsString());
+  assert(str_node.AsString() == "Hello, \"everybody\""s);
+
+  assert(!str_node.IsInt());
+  assert(!str_node.IsDouble());
+
+  assert(Print(str_node) == "\"Hello, \\\"everybody\\\"\""s);
+
+  assert(LoadJSON(Print(str_node)).GetRoot() == str_node);
+  const std::string escape_chars
+	  = R"("\r\n\t\"\\")"s;  // При чтении строкового литерала последовательности \r,\n,\t,\\,\"
+  // преобразовываться в соответствующие символы.
+  // При выводе эти символы должны экранироваться, кроме \t.
+  assert(Print(LoadJSON(escape_chars).GetRoot()) == "\"\\r\\n\t\\\"\\\\\""s);
+  // Пробелы, табуляции и символы перевода строки между токенами JSON файла игнорируются
+  assert(LoadJSON("\t\r\n\n\r \"Hello\" \t\r\n\n\r ").GetRoot() == Node{"Hello"s});
+}
+
+void TestBool() {
+  Node true_node{true};
+  assert(true_node.IsBool());
+  assert(true_node.AsBool());
+
+  Node false_node{false};
+  assert(false_node.IsBool());
+  assert(!false_node.AsBool());
+
+  assert(Print(true_node) == "true"s);
+  assert(Print(false_node) == "false"s);
+
+  assert(LoadJSON("true"s).GetRoot() == true_node);
+  assert(LoadJSON("false"s).GetRoot() == false_node);
+  assert(LoadJSON(" \t\r\n\n\r true \r\n"s).GetRoot() == true_node);
+  assert(LoadJSON(" \t\r\n\n\r false \t\r\n\n\r "s).GetRoot() == false_node);
+}
+
+void TestArray() {
+  Node arr_node{Array{1, 1.23, "Hello"s}};
+  assert(arr_node.IsArray());
+  const Array &arr = arr_node.AsArray();
+  assert(arr.size() == 3);
+  assert(arr.at(0).AsInt() == 1);
+
+  assert(LoadJSON("[1,1.23,\"Hello\"]"s).GetRoot() == arr_node);
+  assert(LoadJSON(Print(arr_node)).GetRoot() == arr_node);
+  assert(LoadJSON(R"(  [ 1  ,  1.23,  "Hello"   ]   )"s).GetRoot() == arr_node);
+  // Пробелы, табуляции и символы перевода строки между токенами JSON файла игнорируются
+  assert(LoadJSON("[ 1 \r \n ,  \r\n\t 1.23, \n \n  \t\t  \"Hello\" \t \n  ] \n  "s).GetRoot()
+			 == arr_node);
+}
+
+void TestMap() {
+  Node dict_node{Dict{{"key1"s, "value1"s}, {"key2"s, 42}}};
+  assert(dict_node.IsMap());
+  const Dict &dict = dict_node.AsMap();
+  assert(dict.size() == 2);
+  assert(dict.at("key1"s).AsString() == "value1"s);
+  assert(dict.at("key2"s).AsInt() == 42);
+
+  assert(LoadJSON("{ \"key1\": \"value1\", \"key2\": 42 }"s).GetRoot() == dict_node);
+  assert(LoadJSON(Print(dict_node)).GetRoot() == dict_node);
+  // Пробелы, табуляции и символы перевода строки между токенами JSON файла игнорируются
+  assert(
+	  LoadJSON(
+		  "\t\r\n\n\r { \t\r\n\n\r \"key1\" \t\r\n\n\r: \t\r\n\n\r \"value1\" \t\r\n\n\r , \t\r\n\n\r \"key2\" \t\r\n\n\r : \t\r\n\n\r 42 \t\r\n\n\r } \t\r\n\n\r"s)
+		  .GetRoot()
+		  == dict_node);
+}
+
+void TestErrorHandling() {
+  MustFailToLoad("["s);
+  MustFailToLoad("]"s);
+
+  MustFailToLoad("{"s);
+  MustFailToLoad("}"s);
+
+  MustFailToLoad("\"hello"s);  // незакрытая кавычка
+
+  MustFailToLoad("tru"s);
+  MustFailToLoad("fals"s);
+  MustFailToLoad("nul"s);
+
+  Node dbl_node{3.5};
+  MustThrowLogicError([&dbl_node] {
+	dbl_node.AsInt();
+  });
+  MustThrowLogicError([&dbl_node] {
+	dbl_node.AsString();
+  });
+  MustThrowLogicError([&dbl_node] {
+	dbl_node.AsArray();
+  });
+
+  Node array_node{Array{}};
+  MustThrowLogicError([&array_node] {
+	array_node.AsMap();
+  });
+  MustThrowLogicError([&array_node] {
+	array_node.AsDouble();
+  });
+  MustThrowLogicError([&array_node] {
+	array_node.AsBool();
+  });
+}
+
+void Benchmark() {
+  const auto start = std::chrono::steady_clock::now();
+  Array arr;
+  arr.reserve(1'000);
+  for (int i = 0; i < 1'000; ++i) {
+	arr.emplace_back(Dict{
+		{"int"s, 42},
+		{"double"s, 42.1},
+		{"null"s, nullptr},
+		{"string"s, "hello"s},
+		{"array"s, Array{1, 2, 3}},
+		{"bool"s, true},
+		{"map"s, Dict{{"key"s, "value"s}}},
+	});
+  }
+  std::stringstream strm;
+  json::Print(Document{arr}, strm);
+  const auto doc = json::Load(strm);
+  assert(doc.GetRoot() == arr);
+  const auto duration = std::chrono::steady_clock::now() - start;
+  std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(duration).count() << "ms"sv
+			<< std::endl;
+}
+
+}  // namespace
 
 int main() {
-  using namespace svg;
-  using namespace std;
-
-  Color none_color;
-  cout << none_color << endl; // none
-
-  Color purple{"purple"s};
-  cout << purple << endl; // purple
-
-  Color rgb = Rgb{100, 200, 255};
-  cout << rgb << endl; // rgb(100,200,255)
-
-  Color rgba = Rgba{100, 200, 255, 0.5};
-  cout << rgba << endl; // rgba(100,200,255,0.5)
-
-  Circle c;
-  c.SetRadius(3.5).SetCenter({1.0, 2.0});
-  c.SetFillColor(rgba);
-  c.SetStrokeColor(purple);
-
-  Document doc;
-  doc.Add(std::move(c));
-  doc.Render(cout);
-
-  svg::Rgba rgba1{100, 20, 50, 0.3};
-  assert(rgba1.red == 100);
-  assert(rgba1.green == 20);
-  assert(rgba1.blue == 50);
-  assert(rgba1.opacity == 0.3);
-
-  svg::Color color1;                               // none
-  svg::Color color2 = svg::Rgb{215, 30, 25};       // rgb(215,30,25)
-  svg::Color color3 = svg::NoneColor;              // none
-  svg::Color color4 = svg::Rgba{15, 15, 25, 0.7};  // rgba(15,15,25,0.7)
-  svg::Color color5 = "red"s;                      // red
-  svg::Color color6 = svg::Rgb{};                  // rgb(0,0,0)
-  svg::Color color7 = svg::Rgba{};                 // rgba(0,0,0,1.0);
-
-  cout << endl << color1 << endl;
-  cout << color2 << endl;
-  cout << color3 << endl;
-  cout << color4 << endl;
-  cout << color5 << endl;
-  cout << color6 << endl;
-  cout << color7 << endl;
-  {
-	// Задаёт цвет в виде трех компонент в таком порядке: red, green, blue
-	svg::Rgb rgb{255, 0, 100};
-	assert(rgb.red == 255);
-	assert(rgb.green == 0);
-	assert(rgb.blue == 100);
-
-// Задаёт цвет по умолчанию: red=0, green=0, blue=0
-	svg::Rgb color;
-	assert(color.red == 0 && color.green == 0 && color.blue == 0);
-  }
-  {
-	// Задаёт цвет в виде четырёх компонент: red, green, blue, opacity
-	svg::Rgba rgba{100, 20, 50, 0.3};
-	assert(rgba.red == 100);
-	assert(rgba.green == 20);
-	assert(rgba.blue == 50);
-	assert(rgba.opacity == 0.3);
-
-// Чёрный непрозрачный цвет: red=0, green=0, blue=0, alpha=1.0
-	svg::Rgba color;
-	assert(color.red == 0 && color.green == 0 && color.blue == 0 && color.opacity == 1.0);
-  }
-  {
-	using namespace svg;
-	using namespace std;
-
-	Rgb start_color{0, 255, 30};
-	Rgb end_color{20, 20, 150};
-
-	const int num_circles = 10;
-	Document doc;
-	for (int i = 0; i < num_circles; ++i) {
-	  const double t = double(i) / (num_circles - 1);
-
-	  const Rgb fill_color = Lerp(start_color, end_color, t);
-
-	  doc.Add(Circle()
-				  .SetFillColor(fill_color)
-				  .SetStrokeColor("black"s)
-				  .SetCenter({i * 20.0 + 40, 40.0})
-				  .SetRadius(15));
-	}
-	doc.Render(cout);
-  }
+  TestNull();
+  TestNumbers();
+  TestStrings();
+  TestBool();
+  TestArray();
+  TestMap();
+  TestErrorHandling();
+  Benchmark();
 }
