@@ -25,7 +25,13 @@ class Node {
   /* Реализуйте Node, используя std::variant */
 
   Node();
-  Node(Value value) noexcept;
+  Node(double value) noexcept;
+  Node(std::nullptr_t value) noexcept;
+  Node(int value) noexcept;
+  Node(bool value) noexcept;
+  Node(std::string value) noexcept;
+  Node(Array value) noexcept;
+  Node(Dict value) noexcept;
 
   bool IsNull() const;
   bool IsInt() const;

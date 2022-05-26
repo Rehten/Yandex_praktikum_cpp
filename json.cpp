@@ -70,22 +70,32 @@ Node LoadNode(istream& input) {
 
 }  // namespace
 Node::Node() : Node(nullptr) {}
-Node::Node(Node::Value value) noexcept : value_(move(value)) {}
+Node::Node(double value) noexcept : value_(value) {}
+Node::Node(int value) noexcept : value_(value) {}
+Node::Node(bool value) noexcept : value_(value) {}
+Node::Node(nullptr_t value) noexcept : value_(value) {}
+Node::Node(Array value) noexcept : value_(move(value)) {}
+Node::Node(Dict value) noexcept : value_(move(value)) {}
+Node::Node(string value) noexcept : value_(move(value)) {}
 
 void Node::Swap(Node &lhs, Node &rhs) noexcept {
   swap<Value>(lhs.value_, rhs.value_);
 }
 Node &Node::operator=(const Value &rhs) {
   this->value_ = rhs;
+
+  return *this;
 }
 Node &Node::operator=(Value &&rhs) {
   *this = rhs;
+
+  return *this;
 }
 bool Node::IsNull() const {
   return visit(NodeTypeChecker(), value_) == NodeType::NULLPTR;
 }
 bool Node::IsInt() const {
-  return visit(NodeTypeChecker(), value_) == NodeType::NULLPTR;
+  return visit(NodeTypeChecker(), value_) == NodeType::INT;
 }
 bool Node::IsBool() const {
   return visit(NodeTypeChecker(), value_) == NodeType::BOOL;
@@ -166,10 +176,7 @@ Document Load(istream& input) {
 }
 
 void Print(const Document& doc, ostream& output) {
-  (void) &doc;
-  (void) &output;
-
-  // Реализуйте функцию самостоятельно
+  output << visit(NodeStringifier(), doc.GetRoot().GetValue());
 }
 
 NodeType NodeTypeChecker::operator()(const nullptr_t &) {
