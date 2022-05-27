@@ -1,4 +1,5 @@
 #include <sstream>
+#include <string_view>
 
 #include "json.h"
 
@@ -10,6 +11,30 @@ class ParsingError : public runtime_error {
 };
 
 using Number = variant<int, double>;
+
+string_view CuttedStringView(string &str) {
+  auto begin = str.begin();
+  auto end = str.end();
+
+  if (begin >= end) {
+	return ""sv;
+  }
+
+  for (; begin != end; ++begin) {
+	if (*begin != ' ' && *begin != '\r' && *begin != '\n' && *begin != '\t') {
+	  break;
+	}
+  }
+
+  for (; begin != end;) {
+	if (*(end - 1) != ' ' && *(end - 1) != '\r' && *(end - 1) != '\n' && *(end - 1) != '\t') {
+	  break;
+	}
+	--end;
+  }
+
+  return {begin, end};
+}
 
 Number LoadNumber(istream &input) {
   using namespace literals;
@@ -134,6 +159,32 @@ string LoadString(istream &input) {
   return s;
 }
 
+nullptr_t LoadNull(istream &input) {
+  auto it = istreambuf_iterator<char>(input);
+  auto end = istreambuf_iterator<char>();
+  string str = string{it, end};
+
+  if (CuttedStringView(str) != "null"sv) {
+	throw ParsingError(""s + str + " is not equal null and cant be parsed."s);
+  }
+
+  return nullptr;
+}
+
+bool LoadBool(istream &input) {
+  auto it = istreambuf_iterator<char>(input);
+  auto end = istreambuf_iterator<char>();
+
+  string src = string{it, end};
+  string_view input_str = CuttedStringView(src);
+
+  if (input_str != "true"sv && input_str != "false"sv) {
+	throw ParsingError(string(input_str.begin(),  input_str.end()) + " is cant be parsed as JSON boolean."s);
+  }
+
+  return input_str == "true"sv;
+}
+
 json::Array LoadArray(istream &input) {
   json::Array rslt{};
 
@@ -157,11 +208,11 @@ json::Node LoadNode(istream &input) {
   } else if (c == '"') {
 	return LoadString(input);
   } else if (c == 'n') {
-	return nullptr;
-  } else if (c == 't') {
-	return true;
-  } else if (c == 'f') {
-	return false;
+	input.putback(c);
+	return LoadNull(input);
+  } else if (c == 't' || c == 'f') {
+	input.putback(c);
+	return LoadBool(input);
   } else if (c == '0' || c == '-' || c >= '1' && c <= '9') {
 	input.putback(c);
 	return LoadNumber(input);
