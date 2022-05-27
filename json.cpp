@@ -5,12 +5,18 @@
 
 using namespace std;
 
+json::Node LoadNode(istream &input);
+
 class ParsingError : public runtime_error {
  public:
   using runtime_error::runtime_error;
 };
 
 using Number = variant<int, double>;
+
+bool IsEscapedChar(char c) {
+  return c == ' ' || c == '\r' || c == '\n' || c == '\t';
+}
 
 string_view CuttedStringView(string &str) {
   auto begin = str.begin();
@@ -21,13 +27,13 @@ string_view CuttedStringView(string &str) {
   }
 
   for (; begin != end; ++begin) {
-	if (*begin != ' ' && *begin != '\r' && *begin != '\n' && *begin != '\t') {
+	if (!IsEscapedChar(*begin)) {
 	  break;
 	}
   }
 
   for (; begin != end;) {
-	if (*(end - 1) != ' ' && *(end - 1) != '\r' && *(end - 1) != '\n' && *(end - 1) != '\t') {
+	if (!IsEscapedChar(*(end - 1))) {
 	  break;
 	}
 	--end;
@@ -179,14 +185,37 @@ bool LoadBool(istream &input) {
   string_view input_str = CuttedStringView(src);
 
   if (input_str != "true"sv && input_str != "false"sv) {
-	throw ParsingError(string(input_str.begin(),  input_str.end()) + " is cant be parsed as JSON boolean."s);
+	throw ParsingError(string(input_str.begin(), input_str.end()) + " is cant be parsed as JSON boolean."s);
   }
 
   return input_str == "true"sv;
 }
 
 json::Array LoadArray(istream &input) {
+  vector<string> lexems{};
+  auto cur_lexem = istreambuf_iterator<char>(input);
+  string cur_lex{};
   json::Array rslt{};
+
+  while (true) {
+	if (*cur_lexem == ',' || *cur_lexem == ']') { ;
+	  lexems.push_back(cur_lex);
+	  cur_lex.clear();
+	} else {
+	  cur_lex += *cur_lexem;
+	}
+	if (*cur_lexem == ']') {
+	  ++cur_lexem;
+	  break;
+	}
+	++cur_lexem;
+  }
+
+  for (const string &lex : lexems) {
+	auto arr_node_stream = istringstream(lex);
+
+	rslt.push_back(LoadNode(arr_node_stream));
+  }
 
   return rslt;
 }
@@ -432,27 +461,21 @@ string NodeStringifier::operator()(const string &str_val) {
 
   for (auto iter = str_val.begin(); iter < str_val.end(); ++iter) {
 	switch (*iter) {
-	  case '\\':
-		rslt.push_back('\\');
+	  case '\\': rslt.push_back('\\');
 		rslt.push_back('\\');
 		break;
-	  case '\r':
-		rslt.push_back('\\');
+	  case '\r': rslt.push_back('\\');
 		rslt.push_back('r');
 		break;
-	  case '\n':
-		rslt.push_back('\\');
+	  case '\n': rslt.push_back('\\');
 		rslt.push_back('n');
 		break;
-	  case '\t':
-		rslt.push_back('\t');
+	  case '\t': rslt.push_back('\t');
 		break;
-	  case '"':
-		rslt.push_back('\\');
+	  case '"': rslt.push_back('\\');
 		rslt.push_back(*iter);
 		break;
-	  default:
-		rslt.push_back(*iter);
+	  default: rslt.push_back(*iter);
 		break;
 	}
   }
