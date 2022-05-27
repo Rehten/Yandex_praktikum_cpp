@@ -1,58 +1,152 @@
+#include <sstream>
+
 #include "json.h"
 
 using namespace std;
 
-namespace json {
+class ParsingError : public runtime_error {
+ public:
+  using runtime_error::runtime_error;
+};
 
-namespace {
+using Number = variant<int, double>;
 
-Node LoadNode(istream& input);
+Number LoadNumber(istream &input) {
+  using namespace literals;
 
-Node LoadArray(istream& input) {
-  Array result;
+  string parsed_num;
 
-  for (char c; input >> c && c != ']';) {
-	if (c != ',') {
-	  input.putback(c);
+  // Считывает в parsed_num очередной символ из input
+  auto read_char = [&parsed_num, &input] {
+	parsed_num += static_cast<char>(input.get());
+	if (!input) {
+	  throw ParsingError("Failed to read number from stream"s);
 	}
-	result.push_back(LoadNode(input));
-  }
+  };
 
-  return Node(move(result));
-}
-
-Node LoadInt(istream& input) {
-  int result = 0;
-  while (isdigit(input.peek())) {
-	result *= 10;
-	result += input.get() - '0';
-  }
-  return Node(result);
-}
-
-Node LoadString(istream& input) {
-  string line;
-  getline(input, line, '"');
-  return Node(move(line));
-}
-
-Node LoadDict(istream& input) {
-  Dict result;
-
-  for (char c; input >> c && c != '}';) {
-	if (c == ',') {
-	  input >> c;
+  // Считывает одну или более цифр в parsed_num из input
+  auto read_digits = [&input, read_char] {
+	if (!isdigit(input.peek())) {
+	  throw ParsingError("A digit is expected"s);
 	}
+	while (isdigit(input.peek())) {
+	  read_char();
+	}
+  };
 
-	string key = LoadString(input).AsString();
-	input >> c;
-	result.insert({move(key), LoadNode(input)});
+  if (input.peek() == '-') {
+	read_char();
+  }
+  // Парсим целую часть числа
+  if (input.peek() == '0') {
+	read_char();
+	// После 0 в JSON не могут идти другие цифры
+  } else {
+	read_digits();
   }
 
-  return Node(move(result));
+  bool is_int = true;
+  // Парсим дробную часть числа
+  if (input.peek() == '.') {
+	read_char();
+	read_digits();
+	is_int = false;
+  }
+
+  // Парсим экспоненциальную часть числа
+  if (int ch = input.peek(); ch == 'e' || ch == 'E') {
+	read_char();
+	if (ch = input.peek(); ch == '+' || ch == '-') {
+	  read_char();
+	}
+	read_digits();
+	is_int = false;
+  }
+
+  try {
+	if (is_int) {
+	  // Сначала пробуем преобразовать строку в int
+	  try {
+		return stoi(parsed_num);
+	  } catch (...) {
+		// В случае неудачи, например, при переполнении,
+		// код ниже попробует преобразовать строку в double
+	  }
+	}
+	return stod(parsed_num);
+  } catch (...) {
+	throw ParsingError("Failed to convert "s + parsed_num + " to number"s);
+  }
 }
 
-Node LoadNode(istream& input) {
+// Считывает содержимое строкового литерала JSON-документа
+// Функцию следует использовать после считывания открывающего символа ":
+string LoadString(istream &input) {
+  using namespace literals;
+
+  auto it = istreambuf_iterator<char>(input);
+  auto end = istreambuf_iterator<char>();
+  string s;
+  while (true) {
+	if (it == end) {
+	  // Поток закончился до того, как встретили закрывающую кавычку?
+	  throw ParsingError("String parsing error");
+	}
+	const char ch = *it;
+	if (ch == '"') {
+	  // Встретили закрывающую кавычку
+	  ++it;
+	  break;
+	} else if (ch == '\\') {
+	  // Встретили начало escape-последовательности
+	  ++it;
+	  if (it == end) {
+		// Поток завершился сразу после символа обратной косой черты
+		throw ParsingError("String parsing error");
+	  }
+	  const char escaped_char = *(it);
+	  // Обрабатываем одну из последовательностей: \\, \n, \t, \r, \"
+	  switch (escaped_char) {
+		case 'n': s.push_back('\n');
+		  break;
+		case 't': s.push_back('\t');
+		  break;
+		case 'r': s.push_back('\r');
+		  break;
+		case '"': s.push_back('"');
+		  break;
+		case '\\': s.push_back('\\');
+		  break;
+		default:
+		  // Встретили неизвестную escape-последовательность
+		  throw ParsingError("Unrecognized escape sequence \\"s + escaped_char);
+	  }
+	} else if (ch == '\n' || ch == '\r') {
+	  // Строковый литерал внутри- JSON не может прерываться символами \r или \n
+	  throw ParsingError("Unexpected end of line"s);
+	} else {
+	  // Просто считываем очередной символ и помещаем его в результирующую строку
+	  s.push_back(ch);
+	}
+	++it;
+  }
+
+  return s;
+}
+
+json::Array LoadArray(istream &input) {
+  json::Array rslt{};
+
+  return rslt;
+}
+
+json::Dict LoadDict(istream &input) {
+  json::Dict rslt{};
+
+  return rslt;
+}
+
+json::Node LoadNode(istream &input) {
   char c;
   input >> c;
 
@@ -62,21 +156,42 @@ Node LoadNode(istream& input) {
 	return LoadDict(input);
   } else if (c == '"') {
 	return LoadString(input);
-  } else {
+  } else if (c == 'n') {
+	return nullptr;
+  } else if (c == 't') {
+	return true;
+  } else if (c == 'f') {
+	return false;
+  } else if (c == '0' || c == '-' || c >= '1' && c <= '9') {
 	input.putback(c);
-	return LoadInt(input);
+	return LoadNumber(input);
+  } else {
+	throw ParsingError("Node lexem is cannot beginning from \""s + c + "\""s);
   }
 }
 
+namespace json {
+
+namespace {
+
 }  // namespace
 Node::Node() : Node(nullptr) {}
-Node::Node(double value) noexcept : value_(value) {}
-Node::Node(int value) noexcept : value_(value) {}
-Node::Node(bool value) noexcept : value_(value) {}
-Node::Node(nullptr_t value) noexcept : value_(value) {}
-Node::Node(Array value) noexcept : value_(move(value)) {}
-Node::Node(Dict value) noexcept : value_(move(value)) {}
-Node::Node(string value) noexcept : value_(move(value)) {}
+Node::Node(double value) noexcept: value_(value) {}
+Node::Node(int value) noexcept: value_(value) {}
+Node::Node(bool value) noexcept: value_(value) {}
+Node::Node(nullptr_t value) noexcept: value_(value) {}
+Node::Node(Array value) noexcept: value_(move(value)) {}
+Node::Node(Dict value) noexcept: value_(move(value)) {}
+Node::Node(string value) noexcept: value_(move(value)) {}
+Node::Node(variant<int, double> value) noexcept {
+  variant<int, double> double_ref{2.34};
+
+  if (value.index() == double_ref.index()) {
+	value_ = get<double>(value);
+  } else {
+	value_ = get<int>(value);
+  }
+}
 
 void Node::Swap(Node &lhs, Node &rhs) noexcept {
   swap<Value>(lhs.value_, rhs.value_);
@@ -126,6 +241,10 @@ int Node::AsBool() const {
   return get<bool>(value_);
 }
 double Node::AsDouble() const {
+  if (IsInt()) {
+	return static_cast<double>(get<int>(value_));
+  }
+
   return get<double>(value_);
 }
 double Node::AsPureDouble() const {
@@ -141,6 +260,8 @@ const Dict &Node::AsMap() const {
   return get<Dict>(value_);
 }
 bool Node::operator==(const Node &rhs) const {
+  if (value_.index() != rhs.value_.index()) return false;
+
   if (IsInt()) {
 	return get<int>(GetValue()) == get<int>(rhs.GetValue());
   } else if (IsPureDouble()) {
@@ -157,7 +278,7 @@ bool Node::operator==(const Node &rhs) const {
 	return get<nullptr_t>(GetValue()) == get<nullptr_t>(rhs.GetValue());
   }
 
-  return false;
+  return get<string>(GetValue()) == get<string>(rhs.GetValue());
 }
 bool Node::operator!=(const Node &rhs) const {
   return !this->operator==(rhs);
@@ -167,15 +288,15 @@ Document::Document(Node root)
 	: root_(move(root)) {
 }
 
-const Node& Document::GetRoot() const {
+const Node &Document::GetRoot() const {
   return root_;
 }
 
-Document Load(istream& input) {
+Document Load(istream &input) {
   return Document{LoadNode(input)};
 }
 
-void Print(const Document& doc, ostream& output) {
+void Print(const Document &doc, ostream &output) {
   output << visit(NodeStringifier(), doc.GetRoot().GetValue());
 }
 
@@ -224,7 +345,7 @@ string NodeStringifier::operator()(const Dict &obj) {
   rslt.reserve(obj.size() * 8);
 
   rslt += "{ ";
-  for (auto iter = obj.begin(); iter !=  obj.end(); ++iter) {
+  for (auto iter = obj.begin(); iter != obj.end(); ++iter) {
 	if (iter != obj.begin()) {
 	  rslt += ", "s;
 	}
@@ -241,9 +362,52 @@ string NodeStringifier::operator()(const int &int_val) {
   return to_string(int_val);
 }
 string NodeStringifier::operator()(const double &double_val) {
-  return to_string(double_val);
+  string stringified_double = to_string(double_val);
+
+  for (size_t i = 0; i != stringified_double.size(); ++i) {
+	if (stringified_double[stringified_double.size() - i - 1] != '0') {
+	  return {stringified_double.begin(), stringified_double.end() - i};
+	}
+  }
+
+  return stringified_double;
 }
 string NodeStringifier::operator()(const string &str_val) {
-  return str_val;
+  string rslt{};
+
+  rslt.reserve(str_val.size() + 4);
+
+  rslt.push_back('\"');
+
+  for (auto iter = str_val.begin(); iter < str_val.end(); ++iter) {
+	switch (*iter) {
+	  case '\\':
+		rslt.push_back('\\');
+		rslt.push_back('\\');
+		break;
+	  case '\r':
+		rslt.push_back('\\');
+		rslt.push_back('r');
+		break;
+	  case '\n':
+		rslt.push_back('\\');
+		rslt.push_back('n');
+		break;
+	  case '\t':
+		rslt.push_back('\t');
+		break;
+	  case '"':
+		rslt.push_back('\\');
+		rslt.push_back(*iter);
+		break;
+	  default:
+		rslt.push_back(*iter);
+		break;
+	}
+  }
+
+  rslt.push_back('\"');
+
+  return rslt;
 }
 }  // namespace json

@@ -32,6 +32,7 @@ class Node {
   Node(std::string value) noexcept;
   Node(Array value) noexcept;
   Node(Dict value) noexcept;
+  Node(std::variant<int, double> value) noexcept;
 
   bool IsNull() const;
   bool IsInt() const;
