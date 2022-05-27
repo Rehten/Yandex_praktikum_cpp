@@ -198,8 +198,10 @@ json::Array LoadArray(istream &input) {
   json::Array rslt{};
 
   while (true) {
-	if (*cur_lexem == ',' || *cur_lexem == ']') { ;
-	  lexems.push_back(cur_lex);
+	if (*cur_lexem == ',' || *cur_lexem == ']') {
+	  if (CuttedStringView(cur_lex).size()) {
+		lexems.push_back(cur_lex);
+	  }
 	  cur_lex.clear();
 	} else {
 	  cur_lex += *cur_lexem;
