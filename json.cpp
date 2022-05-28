@@ -47,7 +47,7 @@ string_view CuttedStringView(string &str) {
 	--end;
   }
 
-  return {begin, end};
+  return {&*begin, static_cast<size_t>(end - begin)};
 }
 
 Number LoadNumber(istream &input) {
@@ -317,7 +317,7 @@ json::Node LoadNode(istream &input) {
   } else if (c == 't' || c == 'f') {
 	input.putback(c);
 	return LoadBool(input);
-  } else if (c == '0' || c == '-' || c >= '1' && c <= '9') {
+  } else if (c == '0' || c == '-' || (c >= '1' && c <= '9')) {
 	input.putback(c);
 	return LoadNumber(input);
   } else {
@@ -574,5 +574,13 @@ string NodeStringifier::operator()(const string &str_val) {
   rslt.push_back('\"');
 
   return rslt;
+}
+
+bool operator==(const json::Document &lhs, const json::Document &rhs) {
+  return lhs.GetRoot() == rhs.GetRoot();
+}
+
+bool operator!=(const json::Document &lhs, const json::Document &rhs) {
+  return !(lhs == rhs);
 }
 }  // namespace json

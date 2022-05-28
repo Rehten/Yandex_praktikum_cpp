@@ -112,4 +112,7 @@ class NodeStringifier {
   std::string operator()(const std::string &);
 };
 
+bool operator==(const json::Document &, const json::Document &);
+bool operator!=(const json::Document &, const json::Document &);
+
 }  // namespace json
