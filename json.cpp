@@ -194,10 +194,13 @@ bool LoadBool(istream &input) {
 json::Array LoadArray(istream &input) {
   vector<string> lexems{};
   auto cur_lexem = istreambuf_iterator<char>(input);
+  auto end = istreambuf_iterator<char>();
   string cur_lex{};
   json::Array rslt{};
 
   while (true) {
+	if (cur_lexem == end) throw json::ParsingError("Have not close bracket");
+
 	if (*cur_lexem == ',' || *cur_lexem == ']') {
 	  if (CuttedStringView(cur_lex).size()) {
 		lexems.push_back(cur_lex);
@@ -225,12 +228,15 @@ json::Array LoadArray(istream &input) {
 json::Dict LoadDict(istream &input) {
   vector<pair<string, string>> lexems{};
   auto cur_lexem = istreambuf_iterator<char>(input);
+  auto end = istreambuf_iterator<char>();
   pair<string, string> cur_pair{};
   json::Dict rslt{};
 
   bool is_key_entered{true};
 
   while (true) {
+	if (cur_lexem == end) throw json::ParsingError("Have not close bracket");
+
 	if (*cur_lexem == ':' || *cur_lexem == ',' || *cur_lexem == '}') {
 	  if (*cur_lexem == ':') {
 		is_key_entered = false;
