@@ -51,14 +51,14 @@ Number LoadNumber(istream &input) {
   auto read_char = [&parsed_num, &input] {
 	parsed_num += static_cast<char>(input.get());
 	if (!input) {
-	  throw ParsingError("Failed to read number from stream"s);
+	  throw json::ParsingError("Failed to read number from stream"s);
 	}
   };
 
   // Считывает одну или более цифр в parsed_num из input
   auto read_digits = [&input, read_char] {
 	if (!isdigit(input.peek())) {
-	  throw ParsingError("A digit is expected"s);
+	  throw json::ParsingError("A digit is expected"s);
 	}
 	while (isdigit(input.peek())) {
 	  read_char();
@@ -106,7 +106,7 @@ Number LoadNumber(istream &input) {
 	}
 	return stod(parsed_num);
   } catch (...) {
-	throw ParsingError("Failed to convert "s + parsed_num + " to number"s);
+	throw json::ParsingError("Failed to convert "s + parsed_num + " to number"s);
   }
 }
 
@@ -121,7 +121,7 @@ string LoadString(istream &input) {
   while (true) {
 	if (it == end) {
 	  // Поток закончился до того, как встретили закрывающую кавычку?
-	  throw ParsingError("String parsing error");
+	  throw json::ParsingError("String parsing error");
 	}
 	const char ch = *it;
 	if (ch == '"') {
@@ -133,7 +133,7 @@ string LoadString(istream &input) {
 	  ++it;
 	  if (it == end) {
 		// Поток завершился сразу после символа обратной косой черты
-		throw ParsingError("String parsing error");
+		throw json::ParsingError("String parsing error");
 	  }
 	  const char escaped_char = *(it);
 	  // Обрабатываем одну из последовательностей: \\, \n, \t, \r, \"
@@ -150,11 +150,11 @@ string LoadString(istream &input) {
 		  break;
 		default:
 		  // Встретили неизвестную escape-последовательность
-		  throw ParsingError("Unrecognized escape sequence \\"s + escaped_char);
+		  throw json::ParsingError("Unrecognized escape sequence \\"s + escaped_char);
 	  }
 	} else if (ch == '\n' || ch == '\r') {
 	  // Строковый литерал внутри- JSON не может прерываться символами \r или \n
-	  throw ParsingError("Unexpected end of line"s);
+	  throw json::ParsingError("Unexpected end of line"s);
 	} else {
 	  // Просто считываем очередной символ и помещаем его в результирующую строку
 	  s.push_back(ch);
@@ -171,7 +171,7 @@ nullptr_t LoadNull(istream &input) {
   string str = string{it, end};
 
   if (CuttedStringView(str) != "null"sv) {
-	throw ParsingError(""s + str + " is not equal null and cant be parsed."s);
+	throw json::ParsingError(""s + str + " is not equal null and cant be parsed."s);
   }
 
   return nullptr;
@@ -185,7 +185,7 @@ bool LoadBool(istream &input) {
   string_view input_str = CuttedStringView(src);
 
   if (input_str != "true"sv && input_str != "false"sv) {
-	throw ParsingError(string(input_str.begin(), input_str.end()) + " is cant be parsed as JSON boolean."s);
+	throw json::ParsingError(string(input_str.begin(), input_str.end()) + " is cant be parsed as JSON boolean."s);
   }
 
   return input_str == "true"sv;
@@ -289,7 +289,7 @@ json::Node LoadNode(istream &input) {
 	input.putback(c);
 	return LoadNumber(input);
   } else {
-	throw ParsingError("Node lexem is cannot beginning from \""s + c + "\""s);
+	throw json::ParsingError("Node lexem is cannot beginning from \""s + c + "\""s);
   }
 }
 
@@ -355,15 +355,23 @@ bool Node::IsMap() const {
 }
 
 const nullptr_t &Node::AsNull() const {
+  if (!IsNull()) throw logic_error("Node is not a null"s);
+
   return get<nullptr_t>(value_);
 }
 int Node::AsInt() const {
+  if (!IsInt()) throw logic_error("Node is not a int"s);
+
   return get<int>(value_);
 }
 int Node::AsBool() const {
+  if (!IsBool()) throw logic_error("Node is not a bool"s);
+
   return get<bool>(value_);
 }
 double Node::AsDouble() const {
+  if (!IsInt() && !IsDouble()) throw logic_error("Node is not a double or int"s);
+
   if (IsInt()) {
 	return static_cast<double>(get<int>(value_));
   }
@@ -371,15 +379,23 @@ double Node::AsDouble() const {
   return get<double>(value_);
 }
 double Node::AsPureDouble() const {
+  if (!IsDouble()) throw logic_error("Node is not a double"s);
+
   return get<double>(value_);
 }
 const string &Node::AsString() const {
+  if (!IsString()) throw logic_error("Node is not a string"s);
+
   return get<string>(value_);
 }
 const Array &Node::AsArray() const {
+  if (!IsArray()) throw logic_error("Node is not a Array"s);
+
   return get<Array>(value_);
 }
 const Dict &Node::AsMap() const {
+  if (!IsMap()) throw logic_error("Node is not a object"s);
+
   return get<Dict>(value_);
 }
 bool Node::operator==(const Node &rhs) const {
