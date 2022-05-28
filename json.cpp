@@ -229,7 +229,7 @@ json::Array LoadArray(istream &input) {
 	} else {
 	  cur_lex += *cur_lexem;
 	}
-	if (*cur_lexem == ']') {
+	if (*cur_lexem == ']' && brackets.empty()) {
 	  ++cur_lexem;
 	  break;
 	}
@@ -251,13 +251,25 @@ json::Dict LoadDict(istream &input) {
   auto end = istreambuf_iterator<char>();
   pair<string, string> cur_pair{};
   json::Dict rslt{};
+  stack<char> brackets{};
+  brackets.push('{');
 
   bool is_key_entered{true};
 
   while (true) {
 	if (cur_lexem == end) throw json::ParsingError("Have not close bracket");
 
-	if (*cur_lexem == ':' || *cur_lexem == ',' || *cur_lexem == '}') {
+	if (*cur_lexem == '"' || *cur_lexem == '[' || *cur_lexem == '{') {
+	  brackets.push(*cur_lexem);
+	}
+
+	if (brackets.size() && (*cur_lexem == '"' || *cur_lexem == ']' || *cur_lexem == '}')) {
+	  if (open_to_close_bracket.at(brackets.top()) != *cur_lexem) throw json::ParsingError("Close brackets is not matched with open!!!"s);
+
+	  brackets.pop();
+	}
+
+	if (((brackets.size() == 1) && (*cur_lexem == ':' || *cur_lexem == ',')) || ((*cur_lexem == '}') && brackets.empty())) {
 	  if (*cur_lexem == ':') {
 		is_key_entered = false;
 	  } else {
@@ -272,7 +284,7 @@ json::Dict LoadDict(istream &input) {
 		cur_pair.second += *cur_lexem;
 	  }
 	}
-	if (*cur_lexem == '}') {
+	if (*cur_lexem == '}' && brackets.empty()) {
 	  ++cur_lexem;
 	  break;
 	}
