@@ -536,6 +536,10 @@ string NodeStringifier::operator()(const double &double_val) {
   string stringified_double = to_string(double_val);
 
   for (size_t i = 0; i != stringified_double.size(); ++i) {
+	if (stringified_double[stringified_double.size() - i - 1] == '.') {
+	  return {stringified_double.begin(), stringified_double.end() - i + 1};
+	}
+
 	if (stringified_double[stringified_double.size() - i - 1] != '0') {
 	  return {stringified_double.begin(), stringified_double.end() - i};
 	}
