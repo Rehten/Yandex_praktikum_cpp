@@ -213,7 +213,7 @@ json::Array LoadArray(istream &input) {
 	++cur_lexem;
   }
 
-  for (const string &lex : lexems) {
+  for (const string &lex: lexems) {
 	auto arr_node_stream = istringstream(lex);
 
 	rslt.push_back(LoadNode(arr_node_stream));
@@ -223,7 +223,42 @@ json::Array LoadArray(istream &input) {
 }
 
 json::Dict LoadDict(istream &input) {
+  vector<pair<string, string>> lexems{};
+  auto cur_lexem = istreambuf_iterator<char>(input);
+  pair<string, string> cur_pair{};
   json::Dict rslt{};
+
+  bool is_key_entered{true};
+
+  while (true) {
+	if (*cur_lexem == ':' || *cur_lexem == ',' || *cur_lexem == '}') {
+	  if (*cur_lexem == ':') {
+		is_key_entered = false;
+	  } else {
+		lexems.push_back(cur_pair);
+		cur_pair = {};
+		is_key_entered = true;
+	  }
+	} else {
+	  if (is_key_entered) {
+		cur_pair.first += *cur_lexem;
+	  } else {
+		cur_pair.second += *cur_lexem;
+	  }
+	}
+	if (*cur_lexem == '}') {
+	  ++cur_lexem;
+	  break;
+	}
+	++cur_lexem;
+  }
+
+  for (auto &[key, value]: lexems) {
+	auto arr_node_stream = istringstream(value);
+
+	auto cleared = CuttedStringView(key);
+	rslt[string{cleared.begin() + 1, cleared.end() - 1}] = LoadNode(arr_node_stream);
+  }
 
   return rslt;
 }
