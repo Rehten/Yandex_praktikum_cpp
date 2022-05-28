@@ -1,11 +1,19 @@
 #include <sstream>
 #include <string_view>
+#include <stack>
+#include <unordered_map>
 
 #include "json.h"
 
 using namespace std;
 
 json::Node LoadNode(istream &input);
+
+static unordered_map<char, char> open_to_close_bracket = {
+  {'{', '}'},
+  {'[', ']'},
+  {'"', '"'},
+};
 
 class ParsingError : public runtime_error {
  public:
@@ -197,11 +205,23 @@ json::Array LoadArray(istream &input) {
   auto end = istreambuf_iterator<char>();
   string cur_lex{};
   json::Array rslt{};
+  stack<char> brackets{};
+  brackets.push('[');
 
   while (true) {
 	if (cur_lexem == end) throw json::ParsingError("Have not close bracket");
 
-	if (*cur_lexem == ',' || *cur_lexem == ']') {
+	if (*cur_lexem == '"' || *cur_lexem == '[' || *cur_lexem == '{') {
+	  brackets.push(*cur_lexem);
+	}
+
+	if (brackets.size() && (*cur_lexem == '"' || *cur_lexem == ']' || *cur_lexem == '}')) {
+	  if (open_to_close_bracket.at(brackets.top()) != *cur_lexem) throw json::ParsingError("Close brackets is not matched with open!!!"s);
+
+	  brackets.pop();
+	}
+
+	if ((*cur_lexem == ',' && (brackets.size() == 1)) || (brackets.empty() && *cur_lexem == ']')) {
 	  if (CuttedStringView(cur_lex).size()) {
 		lexems.push_back(cur_lex);
 	  }
