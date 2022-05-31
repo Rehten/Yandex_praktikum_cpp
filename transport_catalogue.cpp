@@ -3,6 +3,7 @@
 #include <numeric>
 #include <algorithm>
 #include <cstring>
+#include <iomanip>
 
 #include "transport_catalogue.h"
 
@@ -12,10 +13,38 @@ using namespace std;
 using namespace literals::string_literals;
 using namespace literals::string_view_literals;
 
-void TransportCatalogue::apply_db_command(const string &command)
+TransportCatalogue::TransportCatalogue(unique_ptr<RequestHandler>&& request_handler)
+  : request_handler_ptr_(std::move(request_handler))
 {
-  pair<DBCommands, string_view> db_parsed_command = GetDBCommandCodeAndQuery(command);
+}
 
+void
+TransportCatalogue::listen_db_commands_from(std::istream& is)
+{
+  const auto db_commands_query = request_handler_ptr_->get_db_commands_from(is);
+
+  for (const auto& command: db_commands_query)
+  {
+    apply_db_command(command);
+  }
+}
+
+void
+TransportCatalogue::listen_output_commands_from(std::istream& is, std::ostream& os)
+{
+  auto output_command_query = request_handler_ptr_->get_output_commands_from(is, os);
+
+  os << setprecision(6);
+
+  for (const auto& command: output_command_query)
+  {
+    apply_output_command(cout, command);
+  }
+}
+
+void
+TransportCatalogue::apply_db_command(const pair<DBCommands, string>& db_parsed_command)
+{
   switch (db_parsed_command.first)
   {
     case DBCommands::AddBus:
@@ -29,26 +58,40 @@ void TransportCatalogue::apply_db_command(const string &command)
       stops.resize(busmeta.second.size());
       added_route.stops.resize(stops.size());
 
-      transform(busmeta.second.begin(), busmeta.second.end(), stops.begin(), [](const string_view &stop_sv) -> string {
-        return {stop_sv.begin(), stop_sv.end()};
-      });
+      transform(busmeta.second.begin(),
+                busmeta.second.end(),
+                stops.begin(),
+                [](const string_view& stop_sv) -> string
+                {
+                  return {stop_sv.begin(), stop_sv.end()};
+                }
+      );
 
-      for (const string &stopname: stops)
+      for (const string& stopname: stops)
       {
         if (!names_to_stops_.count(stopname))
         {
-          add_stop({++last_stop_id_, {stopname.begin(), stopname.end()}, nullopt});
+          add_stop({++last_stop_id_, {stopname.begin(), stopname.end()},
+                    nullopt}
+          );
         }
-        connect_bus_and_stop(ids_to_buses_.at(busmeta.first), names_to_stops_.at(stopname));
+        connect_bus_and_stop(ids_to_buses_.at(busmeta.first),
+                             names_to_stops_.at(stopname));
       }
 
-      transform(stops.begin(), stops.end(), added_route.stops.begin(), [this](const string &stopname) -> size_t {
-        return names_to_stops_.at(stopname);
-      });
+      transform(stops.begin(),
+                stops.end(),
+                added_route.stops.begin(),
+                [this](const string& stopname) -> size_t
+                {
+                  return names_to_stops_.at(stopname);
+                }
+      );
 
       add_route(move(added_route));
 
-      for (size_t stop_index: set(routes_[routes_.size() - 1].stops.begin(), routes_[routes_.size() - 1].stops.end()))
+      for (size_t stop_index: set(routes_[routes_.size() - 1].stops.begin(),
+                                  routes_[routes_.size() - 1].stops.end()))
       {
         connect_stop_and_route(stop_index, routes_.size() - 1);
       }
@@ -79,17 +122,20 @@ void TransportCatalogue::apply_db_command(const string &command)
       }
     }
       break;
-    default:
-      throw invalid_command_code();
+    default:throw invalid_command_code();
   }
 }
 
-void TransportCatalogue::apply_output_command(ostream &output_stream, const string &command)
+void
+TransportCatalogue::apply_output_command(
+  ostream& output_stream,
+  const pair<OutputCommands, string>& output_command_meta
+)
 {
-  pair<OutputCommands, string_view> db_command_meta = GetOutputCommandCodeAndQuery(command);
-  vector<string_view> query = GetMetadataQueryByCode(db_command_meta.first, db_command_meta.second);
+  vector<string_view> query =
+    QueryParser::GetMetadataQueryByCode(output_command_meta.first, output_command_meta.second);
 
-  switch (db_command_meta.first)
+  switch (output_command_meta.first)
   {
     case OutputCommands::PrintBus:
     {
@@ -111,7 +157,8 @@ void TransportCatalogue::apply_output_command(ostream &output_stream, const stri
         }
 
         size_t routes_count = selected_bus_stops.size();
-        size_t unique_routes_count = set(selected_bus_stops.begin(), selected_bus_stops.end()).size();
+        size_t unique_routes_count =
+          set(selected_bus_stops.begin(), selected_bus_stops.end()).size();
         bool is_practical_length_can_be_calculated(true);
         double theoretical_routes_length{};
         double practical_routes_length{};
@@ -121,13 +168,14 @@ void TransportCatalogue::apply_output_command(ostream &output_stream, const stri
           stop prev = stops_[selected_bus_stops[i - 1]];
           stop cur = stops_[selected_bus_stops[i]];
 
-          theoretical_routes_length += ComputeDistance(*prev.coordinates, *cur.coordinates);
+          theoretical_routes_length +=
+            ComputeDistance(*prev.coordinates, *cur.coordinates);
 
           if (
             is_practical_length_can_be_calculated &&
-            stops_to_stop_distances_.count(prev.name)
-            &&
-            stops_to_stop_distances_.at(prev.name).count(cur.name))
+              stops_to_stop_distances_.count(prev.name)
+              &&
+                stops_to_stop_distances_.at(prev.name).count(cur.name))
           {
             practical_routes_length += static_cast<double>(
               stops_to_stop_distances_
@@ -143,8 +191,13 @@ void TransportCatalogue::apply_output_command(ostream &output_stream, const stri
 
         output_stream << routes_count << " stops on route, "s
                       << unique_routes_count << " unique stops, "s
-                      << (is_practical_length_can_be_calculated ? practical_routes_length : theoretical_routes_length) << " route length, "s
-                      << static_cast<double>(static_cast<double>(practical_routes_length)/ (round(theoretical_routes_length * 100)/100)) << " curvature"s << endl;
+                      << (is_practical_length_can_be_calculated
+                          ? practical_routes_length : theoretical_routes_length)
+                      << " route length, "s
+                      << static_cast<double>(
+                        static_cast<double>(practical_routes_length)
+                          / (round(theoretical_routes_length * 100) / 100))
+                      << " curvature"s << endl;
       }
     }
       break;
@@ -160,13 +213,15 @@ void TransportCatalogue::apply_output_command(ostream &output_stream, const stri
 
       size_t stop_index = names_to_stops_.at(query_stop_name);
 
-      if (!stops_to_buses_.count(stop_index) || stops_to_buses_.at(stop_index).empty())
+      if (!stops_to_buses_.count(stop_index)
+        || stops_to_buses_.at(stop_index).empty())
       {
         output_stream << "Stop " << query_stop_name << ": no buses" << endl;
         return;
       }
 
-      auto &buses_indexes = stops_to_buses_.at(names_to_stops_.at(query_stop_name));
+      auto& buses_indexes =
+        stops_to_buses_.at(names_to_stops_.at(query_stop_name));
       vector<string> buses_ids{};
 
       buses_ids.reserve(buses_indexes.size());
@@ -179,36 +234,271 @@ void TransportCatalogue::apply_output_command(ostream &output_stream, const stri
 
       sort(buses_ids.begin(), buses_ids.end(), less());
 
-      for (const string &id: buses_ids)
+      for (const string& id: buses_ids)
       {
         output_stream << id << " ";
       }
       output_stream << endl;
       return;
     }
-    default:
-      throw invalid_command_code();
+    default:throw invalid_command_code();
   }
 }
 
-vector<string_view> TransportCatalogue::GetMetadataQueryByCode(size_t code, const string_view &command)
+vector<string_view>
+QueryParser::GetMetadataQueryByCode(
+  size_t code,
+  const string_view& command
+)
 {
   switch (code)
   {
-    case DBCommands::AddBus:
-      return GetMetadataQueryForAddBus(command);
-    case DBCommands::AddStop:
-      return GetMetadataQueryForAddStop(command);
-    case OutputCommands::PrintBus:
-      return GetMetadataQueryForPrintBus(command);
-    case OutputCommands::PrintStop:
-      return GetMetadataQueryForPrintStop(command);
-    default:
-      throw invalid_command_code();
+    case DBCommands::AddBus: return GetMetadataQueryForAddBus(command);
+    case DBCommands::AddStop: return GetMetadataQueryForAddStop(command);
+    case OutputCommands::PrintBus: return GetMetadataQueryForPrintBus(command);
+    case OutputCommands::PrintStop: return GetMetadataQueryForPrintStop(command);
+    default: throw invalid_command_code();
   }
 }
 
-vector<string_view> TransportCatalogue::GetMetadataQueryForAddBus(const string_view &command)
+BusMeta
+TransportCatalogue::MakeBusMetaFrom(string_view meta_query)
+{
+  vector<string_view> splitted_meta_query =
+    QueryParser::GetMetadataQueryByCode(DBCommands::AddBus, meta_query);
+
+  return {
+    string(
+      splitted_meta_query[0].begin(),
+      splitted_meta_query[0].end()
+    ),
+    {splitted_meta_query.begin() + 1, splitted_meta_query.end()}
+  };
+}
+
+StopMeta
+TransportCatalogue::MakeStopMetaFrom(string_view meta_query)
+{
+  vector<string_view> splitted_meta_query =
+    QueryParser::GetMetadataQueryByCode(DBCommands::AddStop, meta_query);
+
+  if (splitted_meta_query.size() < DB_COMMAND_QUERY_MIN_LEXEMS_COUNT)
+  {
+    throw invalid_command();
+  }
+
+  auto dependencies =
+    splitted_meta_query.size() == DB_COMMAND_QUERY_MIN_LEXEMS_COUNT
+    ? vector<string_view>{} : vector<string_view>{
+      splitted_meta_query.begin() + 3,
+      splitted_meta_query.end()};
+
+  return {
+    {splitted_meta_query[0].begin(), splitted_meta_query[0].end()},
+    Coordinates{
+      stod(string{splitted_meta_query[1].begin(),
+                  splitted_meta_query[1].end()}
+      ),
+      stod(string{splitted_meta_query[2].begin(), splitted_meta_query[2].end()})
+    },
+    dependencies
+  };
+}
+
+bus
+TransportCatalogue::BuildBusFrom(BusMeta bus_meta)
+{
+  return {bus_meta.first};
+}
+
+stop
+TransportCatalogue::build_stop_from(StopMeta stop_meta)
+{
+  return stop{++last_stop_id_, stop_meta.name, stop_meta.coordinates};
+}
+
+void
+TransportCatalogue::add_stop(const stop&& stop)
+{
+  stops_.push_back(stop);
+  names_to_stops_[stops_[stops_.size() - 1].name] = stops_.size() - 1;
+}
+
+void
+TransportCatalogue::add_bus(const bus&& bus)
+{
+  buses_.push_back(bus);
+  ids_to_buses_[bus.id] = buses_.size() - 1;
+}
+
+void
+TransportCatalogue::add_route(const route&& route)
+{
+  routes_.push_back(route);
+}
+
+void
+TransportCatalogue::connect_bus_and_stop(size_t bus_index, size_t stop_index)
+{
+  buses_to_stops_[bus_index].push_back(stop_index);
+  if (!stops_to_buses_[stop_index].count(bus_index))
+  {
+    stops_to_buses_[stop_index].insert(bus_index);
+  }
+}
+
+void
+TransportCatalogue::connect_stop_and_route(
+  size_t stop_index,
+  size_t route_index
+)
+{
+  routes_[route_index].stops.push_back(stop_index);
+  stops_to_routes_[stop_index].push_back(route_index);
+}
+
+void
+TransportCatalogue::clear()
+{
+  routes_.clear();
+  stops_.clear();
+  buses_.clear();
+  names_to_stops_.clear();
+  stops_to_buses_.clear();
+  buses_to_stops_.clear();
+  stops_to_routes_.clear();
+  ids_to_buses_.clear();
+}
+
+void
+TransportCatalogue::write_stop_dependency(
+  const StopMeta& stopmeta,
+  const std::string& stopname
+)
+{
+  for (size_t i = 0; i != stopmeta.dependencies.size(); i += 2)
+  {
+    string dependency_stopname = {stopmeta.dependencies[i + 1].begin(),
+                                  stopmeta.dependencies[i + 1].end()};
+    string::size_type sz;
+    int dependency_value{
+      static_cast<int>(stoi(string(stopmeta.dependencies[i].begin(),
+                                   stopmeta.dependencies[i].end()), &sz
+      ))
+    };
+
+    if (stops_to_stop_distances_[stopname].count(dependency_stopname))
+    {
+      stops_to_stop_distances_[stopname][dependency_stopname] =
+        dependency_value;
+    }
+    else
+    {
+      stops_to_stop_distances_[stopname][dependency_stopname] =
+        dependency_value;
+      stops_to_stop_distances_[dependency_stopname][stopname] =
+        dependency_value;
+    }
+  }
+}
+
+vector<RequestHandler::DBCommandQuery>
+RawRequestHandler::get_db_commands_from(istream& is)
+{
+  auto get_db_commands = [](istream& is, size_t count) -> vector<string>
+  {
+    vector<string> rslt{};
+    string command{};
+
+    rslt.reserve(count);
+
+    while (count--)
+    {
+      getline(is, command, '\n');
+      rslt.push_back(command);
+      command.clear();
+    }
+
+    return rslt;
+  };
+
+  auto user_input_db_command = [&get_db_commands]() -> vector<string>
+  {
+    size_t commands_count{};
+
+    cin >> commands_count;
+
+    cin.clear();
+    cin.ignore();
+
+    return get_db_commands(cin, commands_count);
+  };
+
+  auto user_input_commands = user_input_db_command();
+  vector<DBCommandQuery> db_commands(user_input_commands.size());
+
+  return transform(user_input_commands.begin(),
+                   user_input_commands.end(),
+                   db_commands,
+                   [](const string& str) -> DBCommandQuery
+                   {
+                     auto db_command = QueryParser::GetDBCommandCodeAndQuery(str);
+
+                     return {db_command.first,
+                             string(db_command.second.begin(), db_command.second.end())};
+                   }
+  );
+}
+
+vector<RequestHandler::OutputCommandQuery>
+RawRequestHandler::get_output_commands_from(istream& is, ostream& os)
+{
+  auto get_output_commands = [](istream& is, size_t count) -> vector<string>
+  {
+    vector<string> rslt{};
+    string command{};
+
+    rslt.reserve(count);
+
+    while (count--)
+    {
+      getline(is, command, '\n');
+      rslt.push_back(command);
+      command.clear();
+    }
+
+    return rslt;
+  };
+
+  auto user_input_output_command = [&get_output_commands]() -> vector<string>
+  {
+    size_t commands_count{};
+
+    cin >> commands_count;
+
+    cin.clear();
+    cin.ignore();
+
+    return get_output_commands(cin, commands_count);
+  };
+
+  auto user_commands = user_input_output_command();
+  vector<OutputCommandQuery> output_commands(user_commands.size());
+
+  return transform(user_commands.begin(),
+                   user_commands.end(),
+                   output_commands,
+                   [](const string& str) -> OutputCommandQuery
+                   {
+                     auto out_cmd = QueryParser::GetOutputCommandCodeAndQuery(str);
+
+                     return {out_cmd.first, string{out_cmd.second.begin(),  out_cmd.second.end()}};
+                   }
+  );
+}
+
+vector<string_view>
+QueryParser::GetMetadataQueryForAddBus(const string_view& command)
 {
   vector<string_view> bus_metadata_query{};
   bus_metadata_query.reserve(DB_COMMAND_QUERY_MIN_LEXEMS_COUNT);
@@ -223,8 +513,11 @@ vector<string_view> TransportCatalogue::GetMetadataQueryForAddBus(const string_v
       if (*iter == ':')
       {
         is_bus_id_getted = true;
-        bus_metadata_query.push_back({&*lexem_begin, static_cast<size_t>(&*iter - &*lexem_begin)});
-        lexem_begin = iter + 2 < command.end() ? iter + 2 : throw invalid_command_metadata();
+        bus_metadata_query.push_back({&*lexem_begin, static_cast<size_t>(&*iter
+          - &*lexem_begin)}
+        );
+        lexem_begin = iter + 2 < command.end() ? iter + 2
+                                               : throw invalid_command_metadata();
         ++iter;
       }
     }
@@ -237,13 +530,20 @@ vector<string_view> TransportCatalogue::GetMetadataQueryForAddBus(const string_v
 
       if (command.end() - iter == 1)
       {
-        bus_metadata_query.push_back({&*lexem_begin, static_cast<size_t>(&*(command.rbegin()) + 1 - &*lexem_begin)});
+        bus_metadata_query.push_back({&*lexem_begin,
+                                      static_cast<size_t>(&*(command.rbegin())
+                                        + 1 - &*lexem_begin)}
+        );
       }
 
       if (*iter == '-' || *iter == '>')
       {
-        bus_metadata_query.push_back({&*lexem_begin, static_cast<size_t>(&*(iter - 1) - &*lexem_begin)});
-        lexem_begin = iter + 2 < command.end() ? iter + 2 : throw invalid_command_metadata();
+        bus_metadata_query.push_back({&*lexem_begin,
+                                      static_cast<size_t>(&*(iter - 1)
+                                        - &*lexem_begin)}
+        );
+        lexem_begin = iter + 2 < command.end() ? iter + 2
+                                               : throw invalid_command_metadata();
       }
     }
   }
@@ -251,7 +551,8 @@ vector<string_view> TransportCatalogue::GetMetadataQueryForAddBus(const string_v
   if (is_route_need_reversed)
   {
     bus_metadata_query.reserve(bus_metadata_query.size() * 2 - 1);
-    for (auto iter = bus_metadata_query.rbegin() + 1; iter != bus_metadata_query.rend() - 1; ++iter)
+    for (auto iter = bus_metadata_query.rbegin() + 1;
+         iter != bus_metadata_query.rend() - 1; ++iter)
     {
       bus_metadata_query.push_back(*iter);
     }
@@ -260,7 +561,8 @@ vector<string_view> TransportCatalogue::GetMetadataQueryForAddBus(const string_v
   return bus_metadata_query;
 }
 
-vector<string_view> TransportCatalogue::GetMetadataQueryForAddStop(const string_view &command)
+vector<string_view>
+QueryParser::GetMetadataQueryForAddStop(const string_view& command)
 {
   vector<string_view> stop_metadata_query{};
   stop_metadata_query.reserve(DB_COMMAND_QUERY_MIN_LEXEMS_COUNT);
@@ -275,8 +577,11 @@ vector<string_view> TransportCatalogue::GetMetadataQueryForAddStop(const string_
       if (*iter == ':')
       {
         is_stop_name_getted = true;
-        stop_metadata_query.push_back({&*lexem_begin, static_cast<size_t>(&*iter - &*lexem_begin)});
-        lexem_begin = iter + 2 < command.end() ? iter + 2 : throw invalid_command_metadata();
+        stop_metadata_query.push_back({&*lexem_begin, static_cast<size_t>(&*iter
+          - &*lexem_begin)}
+        );
+        lexem_begin = iter + 2 < command.end() ? iter + 2
+                                               : throw invalid_command_metadata();
         ++iter;
       }
     }
@@ -290,14 +595,17 @@ vector<string_view> TransportCatalogue::GetMetadataQueryForAddStop(const string_
         }
 
         ++coordinates_writen_count;
-        stop_metadata_query.push_back({&*lexem_begin, static_cast<size_t>(&*iter - &*lexem_begin)});
+        stop_metadata_query.push_back({&*lexem_begin, static_cast<size_t>(&*iter
+          - &*lexem_begin)}
+        );
 
         if (command.end() - iter == 0)
         {
           break;
         }
 
-        lexem_begin = iter + 2 < command.end() ? iter + 2 : throw invalid_command_metadata();
+        lexem_begin = iter + 2 < command.end() ? iter + 2
+                                               : throw invalid_command_metadata();
         ++iter;
       }
     }
@@ -305,21 +613,29 @@ vector<string_view> TransportCatalogue::GetMetadataQueryForAddStop(const string_
     {
       if (command.end() - iter == 1)
       {
-        stop_metadata_query.push_back({&*lexem_begin, static_cast<size_t>(&*(command.rbegin()) + 1 - &*lexem_begin)});
+        stop_metadata_query.push_back({&*lexem_begin,
+                                       static_cast<size_t>(&*(command.rbegin())
+                                         + 1 - &*lexem_begin)}
+        );
         break;
       }
 
       if (command.end() - iter > 5 && (string_view(&*iter, 5) == "m to "sv))
       {
-        stop_metadata_query.push_back({&*lexem_begin, static_cast<size_t>(&*iter - &*lexem_begin)});
+        stop_metadata_query.push_back({&*lexem_begin, static_cast<size_t>(&*iter
+          - &*lexem_begin)}
+        );
         lexem_begin = iter + 5;
         iter += 4;
       }
 
       if (*iter == ',')
       {
-        stop_metadata_query.push_back({&*lexem_begin, static_cast<size_t>(&*iter - &*lexem_begin)});
-        lexem_begin = iter + 2 < command.end() ? iter + 2 : throw invalid_command_metadata();
+        stop_metadata_query.push_back({&*lexem_begin, static_cast<size_t>(&*iter
+          - &*lexem_begin)}
+        );
+        lexem_begin = iter + 2 < command.end() ? iter + 2
+                                               : throw invalid_command_metadata();
         ++iter;
       }
     }
@@ -328,24 +644,28 @@ vector<string_view> TransportCatalogue::GetMetadataQueryForAddStop(const string_
   return stop_metadata_query;
 }
 
-vector<string_view> TransportCatalogue::GetMetadataQueryForPrintBus(const string_view &command)
+vector<string_view>
+QueryParser::GetMetadataQueryForPrintBus(const string_view& command)
 {
   return {command};
 }
 
-std::vector<string_view> TransportCatalogue::GetMetadataQueryForPrintStop(const string_view &command)
+std::vector<string_view>
+QueryParser::GetMetadataQueryForPrintStop(const string_view& command)
 {
   return {command};
 }
 
-pair<DBCommands, string_view> TransportCatalogue::GetDBCommandCodeAndQuery(const string &from)
+pair<DBCommands, string_view>
+QueryParser::GetDBCommandCodeAndQuery(const string& from)
 {
   if (from.empty())
   {
     throw empty_command_metadata();
   }
 
-  pair<string_view, string_view> command_key_and_meta = DivideCommandByCodeAndValue(from);
+  pair<string_view, string_view>
+    command_key_and_meta = DivideCommandByCodeAndValue(from);
   DBCommands command_key{};
 
   if (command_key_and_meta.first == "Bus"sv)
@@ -364,14 +684,16 @@ pair<DBCommands, string_view> TransportCatalogue::GetDBCommandCodeAndQuery(const
   return {command_key, command_key_and_meta.second};
 }
 
-pair<OutputCommands, string_view> TransportCatalogue::GetOutputCommandCodeAndQuery(const string &from)
+pair<OutputCommands, string_view>
+QueryParser::GetOutputCommandCodeAndQuery(const string& from)
 {
   if (from.empty())
   {
     throw empty_command_metadata();
   }
 
-  pair<string_view, string_view> command_key_and_meta = DivideCommandByCodeAndValue(from);
+  pair<string_view, string_view>
+    command_key_and_meta = DivideCommandByCodeAndValue(from);
   OutputCommands command_key{};
 
   if (command_key_and_meta.first == "Bus"sv)
@@ -390,53 +712,8 @@ pair<OutputCommands, string_view> TransportCatalogue::GetOutputCommandCodeAndQue
   return {command_key, command_key_and_meta.second};
 }
 
-BusMeta TransportCatalogue::MakeBusMetaFrom(string_view meta_query)
-{
-  vector<string_view> splitted_meta_query = GetMetadataQueryByCode(DBCommands::AddBus, meta_query);
-
-  return {
-    string(
-      splitted_meta_query[0].begin(),
-      splitted_meta_query[0].end()
-    ),
-    {splitted_meta_query.begin() + 1, splitted_meta_query.end()}
-  };
-}
-
-StopMeta TransportCatalogue::MakeStopMetaFrom(string_view meta_query)
-{
-  vector<string_view> splitted_meta_query = GetMetadataQueryByCode(DBCommands::AddStop, meta_query);
-
-  if (splitted_meta_query.size() < DB_COMMAND_QUERY_MIN_LEXEMS_COUNT)
-  {
-    throw invalid_command();
-  }
-
-  auto dependencies = splitted_meta_query.size() == DB_COMMAND_QUERY_MIN_LEXEMS_COUNT
-                      ? vector<string_view>{} : vector<string_view>{splitted_meta_query.begin() + 3,
-                                                                    splitted_meta_query.end()};
-
-  return {
-    {splitted_meta_query[0].begin(), splitted_meta_query[0].end()},
-    Coordinates{
-      stod(string{splitted_meta_query[1].begin(), splitted_meta_query[1].end()}),
-      stod(string{splitted_meta_query[2].begin(), splitted_meta_query[2].end()})
-    },
-    dependencies
-  };
-}
-
-bus TransportCatalogue::BuildBusFrom(BusMeta bus_meta)
-{
-  return {bus_meta.first};
-}
-
-stop TransportCatalogue::build_stop_from(StopMeta stop_meta)
-{
-  return stop{++last_stop_id_, stop_meta.name, stop_meta.coordinates};
-}
-
-pair<string_view, string_view> TransportCatalogue::DivideCommandByCodeAndValue(const string &src)
+pair<string_view, string_view>
+QueryParser::DivideCommandByCodeAndValue(const string& src)
 {
   string_view command_code{};
   string_view command_meta{};
@@ -452,73 +729,4 @@ pair<string_view, string_view> TransportCatalogue::DivideCommandByCodeAndValue(c
   }
 
   return {command_code, command_meta};
-}
-
-void TransportCatalogue::add_stop(const stop &&stop)
-{
-  stops_.push_back(stop);
-  names_to_stops_[stops_[stops_.size() - 1].name] = stops_.size() - 1;
-}
-
-void TransportCatalogue::add_bus(const bus &&bus)
-{
-  buses_.push_back(bus);
-  ids_to_buses_[bus.id] = buses_.size() - 1;
-}
-
-void TransportCatalogue::add_route(const route &&route)
-{
-  routes_.push_back(route);
-}
-
-void TransportCatalogue::connect_bus_and_stop(size_t bus_index, size_t stop_index)
-{
-  buses_to_stops_[bus_index].push_back(stop_index);
-  if (!stops_to_buses_[stop_index].count(bus_index))
-  {
-    stops_to_buses_[stop_index].insert(bus_index);
-  }
-}
-
-void TransportCatalogue::connect_stop_and_route(size_t stop_index, size_t route_index)
-{
-  routes_[route_index].stops.push_back(stop_index);
-  stops_to_routes_[stop_index].push_back(route_index);
-}
-
-void TransportCatalogue::clear()
-{
-  routes_.clear();
-  stops_.clear();
-  buses_.clear();
-  names_to_stops_.clear();
-  stops_to_buses_.clear();
-  buses_to_stops_.clear();
-  stops_to_routes_.clear();
-  ids_to_buses_.clear();
-}
-
-void TransportCatalogue::write_stop_dependency(
-  const StopMeta &stopmeta,
-  const std::string &stopname
-)
-{
-  for (size_t i = 0; i != stopmeta.dependencies.size(); i += 2)
-  {
-    string dependency_stopname = {stopmeta.dependencies[i + 1].begin(), stopmeta.dependencies[i + 1].end()};
-    string::size_type sz;
-    int dependency_value{
-      static_cast<int>(stoi(string(stopmeta.dependencies[i].begin(), stopmeta.dependencies[i].end()), &sz))
-    };
-
-    if (stops_to_stop_distances_[stopname].count(dependency_stopname))
-    {
-      stops_to_stop_distances_[stopname][dependency_stopname] = dependency_value;
-    }
-    else
-    {
-      stops_to_stop_distances_[stopname][dependency_stopname] = dependency_value;
-      stops_to_stop_distances_[dependency_stopname][stopname] = dependency_value;
-    }
-  }
 }
