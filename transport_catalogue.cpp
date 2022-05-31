@@ -32,7 +32,7 @@ TransportCatalogue::listen_db_commands_from(std::istream& is)
 void
 TransportCatalogue::listen_output_commands_from(std::istream& is, std::ostream& os)
 {
-  auto output_command_query = request_handler_ptr_->get_output_commands_from(is, os);
+  auto output_command_query = request_handler_ptr_->get_output_commands_from(is);
 
   os << setprecision(6);
 
@@ -405,7 +405,7 @@ TransportCatalogue::write_stop_dependency(
 vector<RequestHandler::DBCommandQuery>
 RawRequestHandler::get_db_commands_from(istream& is)
 {
-  auto get_db_commands = [](istream& is, size_t count) -> vector<string>
+  auto get_db_commands = [&is](size_t count) -> vector<string>
   {
     vector<string> rslt{};
     string command{};
@@ -422,38 +422,38 @@ RawRequestHandler::get_db_commands_from(istream& is)
     return rslt;
   };
 
-  auto user_input_db_command = [&get_db_commands]() -> vector<string>
+  auto user_input_db_command = [&get_db_commands](istream& is) -> vector<string>
   {
     size_t commands_count{};
 
-    cin >> commands_count;
+    is >> commands_count;
 
-    cin.clear();
-    cin.ignore();
+    is.clear();
+    is.ignore();
 
-    return get_db_commands(cin, commands_count);
+    return get_db_commands(commands_count);
   };
 
-  auto user_input_commands = user_input_db_command();
-  vector<DBCommandQuery> db_commands(user_input_commands.size());
+  auto user_input_commands = user_input_db_command(is);
+  vector<DBCommandQuery> db_commands{};
+  db_commands.reserve(user_input_commands.size());
 
-  return transform(user_input_commands.begin(),
-                   user_input_commands.end(),
-                   db_commands,
-                   [](const string& str) -> DBCommandQuery
-                   {
-                     auto db_command = QueryParser::GetDBCommandCodeAndQuery(str);
+  for (size_t i = 0; i != user_input_commands.size(); ++i)
+  {
+    const auto& str = user_input_commands[i];
+    auto db_command = QueryParser::GetDBCommandCodeAndQuery(str);
+    string command_meta = string(db_command.second.begin(), db_command.second.end());
 
-                     return {db_command.first,
-                             string(db_command.second.begin(), db_command.second.end())};
-                   }
-  );
+    db_commands.push_back({db_command.first, command_meta});
+  }
+
+  return db_commands;
 }
 
 vector<RequestHandler::OutputCommandQuery>
-RawRequestHandler::get_output_commands_from(istream& is, ostream& os)
+RawRequestHandler::get_output_commands_from(istream& is)
 {
-  auto get_output_commands = [](istream& is, size_t count) -> vector<string>
+  auto get_output_commands = [&is](size_t count) -> vector<string>
   {
     vector<string> rslt{};
     string command{};
@@ -470,31 +470,33 @@ RawRequestHandler::get_output_commands_from(istream& is, ostream& os)
     return rslt;
   };
 
-  auto user_input_output_command = [&get_output_commands]() -> vector<string>
+  auto user_input_output_command = [&get_output_commands](istream& is) -> vector<string>
   {
     size_t commands_count{};
 
-    cin >> commands_count;
+    is >> commands_count;
 
-    cin.clear();
-    cin.ignore();
+    is.clear();
+    is.ignore();
 
-    return get_output_commands(cin, commands_count);
+    return get_output_commands(commands_count);
   };
 
-  auto user_commands = user_input_output_command();
-  vector<OutputCommandQuery> output_commands(user_commands.size());
+  auto user_commands = user_input_output_command(is);
+  vector<OutputCommandQuery> output_commands{};
+  output_commands.reserve(user_commands.size());
 
-  return transform(user_commands.begin(),
-                   user_commands.end(),
-                   output_commands,
-                   [](const string& str) -> OutputCommandQuery
-                   {
-                     auto out_cmd = QueryParser::GetOutputCommandCodeAndQuery(str);
+  for (size_t i = 0; i != user_commands.size(); ++i)
+  {
+    const auto& str = user_commands[i];
+    auto output_command = QueryParser::GetOutputCommandCodeAndQuery(str);
+    string command_meta = string(output_command.second.begin(), output_command.second.end());
 
-                     return {out_cmd.first, string{out_cmd.second.begin(),  out_cmd.second.end()}};
-                   }
-  );
+    output_commands.push_back({output_command.first, command_meta}
+    );
+  }
+
+  return output_commands;
 }
 
 vector<string_view>

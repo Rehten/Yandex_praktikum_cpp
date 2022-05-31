@@ -127,7 +127,7 @@ class RequestHandler
   virtual std::vector<DBCommandQuery>
   get_db_commands_from(std::istream&) = 0;
   virtual std::vector<OutputCommandQuery>
-  get_output_commands_from(std::istream&, std::ostream&) = 0;
+  get_output_commands_from(std::istream&) = 0;
 };
 
 class RawRequestHandler : public RequestHandler
@@ -136,7 +136,7 @@ class RawRequestHandler : public RequestHandler
   std::vector<DBCommandQuery>
   get_db_commands_from(std::istream&) override;
   std::vector<OutputCommandQuery>
-  get_output_commands_from(std::istream&, std::ostream&) override;
+  get_output_commands_from(std::istream&) override;
 };
 
 class TransportCatalogue
