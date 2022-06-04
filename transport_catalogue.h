@@ -154,6 +154,8 @@ class JSONRequestHandler : public RequestHandler
   get_output_commands_from(std::istream&) override;
 };
 
+class ResponseSeller;
+
 class TransportCatalogue
 {
   size_t last_stop_id_ = 1;
@@ -195,8 +197,9 @@ class TransportCatalogue
   std::map<std::string, std::map<std::string, int>> stops_to_stop_distances_;
 
   std::unique_ptr<RequestHandler> request_handler_ptr_;
+  std::unique_ptr<ResponseSeller> response_seller_ptr_;
  public:
-  TransportCatalogue(std::unique_ptr<RequestHandler>&&);
+  TransportCatalogue(std::unique_ptr<RequestHandler>&&, std::unique_ptr<ResponseSeller>&&);
 
   void
   listen_db_commands_from(std::istream&);
@@ -261,4 +264,26 @@ class TransportCatalogue
 
   void
   clear();
+
+  friend class RequestHandler;
+  friend class ResponseSeller;
+  friend class RawResponseSeller;
+};
+
+class ResponseSeller
+{
+ public:
+  virtual void
+  send_bus(TransportCatalogue*, std::ostream&, std::vector<std::string_view>) = 0;
+  virtual void
+  send_stop(TransportCatalogue*, std::ostream&, std::vector<std::string_view>) = 0;
+};
+
+class RawResponseSeller : public ResponseSeller
+{
+ public:
+  void
+  send_bus(TransportCatalogue*, std::ostream&, std::vector<std::string_view>) override;
+  void
+  send_stop(TransportCatalogue*, std::ostream&, std::vector<std::string_view>) override;
 };

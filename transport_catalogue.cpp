@@ -14,8 +14,11 @@ using namespace std;
 using namespace literals::string_literals;
 using namespace literals::string_view_literals;
 
-TransportCatalogue::TransportCatalogue(unique_ptr<RequestHandler>&& request_handler)
-  : request_handler_ptr_(std::move(request_handler))
+TransportCatalogue::TransportCatalogue(
+  unique_ptr<RequestHandler>&& request_handler,
+  unique_ptr<ResponseSeller>&& response_seller_ptr
+)
+  : request_handler_ptr_(move(request_handler)), response_seller_ptr_(move(response_seller_ptr))
 {
 }
 
@@ -139,109 +142,11 @@ TransportCatalogue::apply_output_command(
   switch (output_command_meta.first)
   {
     case OutputCommands::PrintBus:
-    {
-      string bus_id = string(query[0].begin(), query[0].end());
-
-      output_stream << "Bus "s << bus_id << ": "s;
-
-      if (!ids_to_buses_.count(bus_id))
-      {
-        output_stream << "not found"s << endl;
-      }
-      else
-      {
-        auto selected_bus_stops = buses_to_stops_.at(ids_to_buses_.at(bus_id));
-
-        if (selected_bus_stops.size() < 2)
-        {
-          throw invalid_command_metadata();
-        }
-
-        size_t routes_count = selected_bus_stops.size();
-        size_t unique_routes_count =
-          set(selected_bus_stops.begin(), selected_bus_stops.end()).size();
-        bool is_practical_length_can_be_calculated(true);
-        double theoretical_routes_length{};
-        double practical_routes_length{};
-
-        for (size_t i = 1; i != selected_bus_stops.size(); ++i)
-        {
-          stop prev = stops_[selected_bus_stops[i - 1]];
-          stop cur = stops_[selected_bus_stops[i]];
-
-          theoretical_routes_length +=
-            ComputeDistance(*prev.coordinates, *cur.coordinates);
-
-          if (
-            is_practical_length_can_be_calculated &&
-              stops_to_stop_distances_.count(prev.name)
-              &&
-                stops_to_stop_distances_.at(prev.name).count(cur.name))
-          {
-            practical_routes_length += static_cast<double>(
-              stops_to_stop_distances_
-                .at(prev.name)
-                .at(cur.name)
-            );
-          }
-          else
-          {
-            is_practical_length_can_be_calculated = false;
-          }
-        }
-
-        output_stream << routes_count << " stops on route, "s
-                      << unique_routes_count << " unique stops, "s
-                      << (is_practical_length_can_be_calculated
-                          ? practical_routes_length : theoretical_routes_length)
-                      << " route length, "s
-                      << static_cast<double>(
-                        static_cast<double>(practical_routes_length)
-                          / (round(theoretical_routes_length * 100) / 100))
-                      << " curvature"s << endl;
-      }
-    }
+      response_seller_ptr_->send_bus(this, output_stream, query);
       break;
     case OutputCommands::PrintStop:
-    {
-      string query_stop_name = string(query[0].begin(), query[0].end());
-
-      if (!names_to_stops_.count(query_stop_name))
-      {
-        output_stream << "Stop " << query_stop_name << ": not found" << endl;
-        return;
-      }
-
-      size_t stop_index = names_to_stops_.at(query_stop_name);
-
-      if (!stops_to_buses_.count(stop_index)
-        || stops_to_buses_.at(stop_index).empty())
-      {
-        output_stream << "Stop " << query_stop_name << ": no buses" << endl;
-        return;
-      }
-
-      auto& buses_indexes =
-        stops_to_buses_.at(names_to_stops_.at(query_stop_name));
-      vector<string> buses_ids{};
-
-      buses_ids.reserve(buses_indexes.size());
-
-      output_stream << "Stop " << query_stop_name << ": buses ";
-      for (size_t bus_index: buses_indexes)
-      {
-        buses_ids.push_back(buses_[bus_index].id);
-      }
-
-      sort(buses_ids.begin(), buses_ids.end(), less());
-
-      for (const string& id: buses_ids)
-      {
-        output_stream << id << " ";
-      }
-      output_stream << endl;
-      return;
-    }
+      response_seller_ptr_->send_stop(this, output_stream, query);
+      break;
     default: throw invalid_command_code();
   }
 }
@@ -800,4 +705,118 @@ QueryParser::DivideCommandByCodeAndValue(const string& src)
   }
 
   return {command_code, command_meta};
+}
+
+void
+RawResponseSeller::send_bus(
+  TransportCatalogue* tc_ptr,
+  ostream& os,
+  std::vector<std::string_view> command_lexems
+)
+{
+  string bus_id = string(command_lexems[0].begin(), command_lexems[0].end());
+
+  os << "Bus "s << bus_id << ": "s;
+
+  if (!tc_ptr->ids_to_buses_.count(bus_id))
+  {
+    os << "not found"s << endl;
+  }
+  else
+  {
+    auto selected_bus_stops = tc_ptr->buses_to_stops_.at(tc_ptr->ids_to_buses_.at(bus_id));
+
+    if (selected_bus_stops.size() < 2)
+    {
+      throw invalid_command_metadata();
+    }
+
+    size_t routes_count = selected_bus_stops.size();
+    size_t unique_routes_count =
+      set(selected_bus_stops.begin(), selected_bus_stops.end()).size();
+    bool is_practical_length_can_be_calculated(true);
+    double theoretical_routes_length{};
+    double practical_routes_length{};
+
+    for (size_t i = 1; i != selected_bus_stops.size(); ++i)
+    {
+      stop prev = tc_ptr->stops_[selected_bus_stops[i - 1]];
+      stop cur = tc_ptr->stops_[selected_bus_stops[i]];
+
+      theoretical_routes_length +=
+        ComputeDistance(*prev.coordinates, *cur.coordinates);
+
+      if (
+        is_practical_length_can_be_calculated &&
+          tc_ptr->stops_to_stop_distances_.count(prev.name)
+          &&
+            tc_ptr->stops_to_stop_distances_.at(prev.name).count(cur.name))
+      {
+        practical_routes_length += static_cast<double>(
+          tc_ptr->stops_to_stop_distances_
+            .at(prev.name)
+            .at(cur.name)
+        );
+      }
+      else
+      {
+        is_practical_length_can_be_calculated = false;
+      }
+    }
+
+    os << routes_count << " stops on route, "s
+       << unique_routes_count << " unique stops, "s
+       << (is_practical_length_can_be_calculated
+           ? practical_routes_length : theoretical_routes_length)
+       << " route length, "s
+       << static_cast<double>(
+         static_cast<double>(practical_routes_length)
+           / (round(theoretical_routes_length * 100) / 100))
+       << " curvature"s << endl;
+  }
+}
+
+void
+RawResponseSeller::send_stop(
+  TransportCatalogue* tc_ptr,
+  ostream& os,
+  std::vector<std::string_view> command_lexems
+)
+{
+  string query_stop_name = string(command_lexems[0].begin(), command_lexems[0].end());
+
+  if (!tc_ptr->names_to_stops_.count(query_stop_name))
+  {
+    os << "Stop " << query_stop_name << ": not found" << endl;
+    return;
+  }
+
+  size_t stop_index = tc_ptr->names_to_stops_.at(query_stop_name);
+
+  if (!tc_ptr->stops_to_buses_.count(stop_index)
+    || tc_ptr->stops_to_buses_.at(stop_index).empty())
+  {
+    os << "Stop " << query_stop_name << ": no buses" << endl;
+    return;
+  }
+
+  auto& buses_indexes =
+    tc_ptr->stops_to_buses_.at(tc_ptr->names_to_stops_.at(query_stop_name));
+  vector<string> buses_ids{};
+
+  buses_ids.reserve(buses_indexes.size());
+
+  os << "Stop " << query_stop_name << ": buses ";
+  for (size_t bus_index: buses_indexes)
+  {
+    buses_ids.push_back(tc_ptr->buses_[bus_index].id);
+  }
+
+  sort(buses_ids.begin(), buses_ids.end(), less());
+
+  for (const string& id: buses_ids)
+  {
+    os << id << " ";
+  }
+  os << endl;
 }

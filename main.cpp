@@ -4,9 +4,10 @@
 
 using namespace std;
 
-int main()
+int
+main()
 {
-  TransportCatalogue catalogue(make_unique<JSONRequestHandler>());
+  TransportCatalogue catalogue(make_unique<RawRequestHandler>(), make_unique<RawResponseSeller>());
 
   catalogue.listen_db_commands_from(cin);
 
