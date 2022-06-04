@@ -473,43 +473,51 @@ JSONResponseSeller::send_stop(
 )
 {
   ApplyRenderStart(os);
+  os << "  { "s << "\"request_id\": "s << to_string(RequestsIDsList[RenderedRequestIndex]) << ", "s;
 
   string query_stop_name = string(command_lexems[0].begin(), command_lexems[0].end());
 
   if (!tc_ptr->names_to_stops_.count(query_stop_name))
   {
-    os << "Stop " << query_stop_name << ": not found" << endl;
-    return;
+    os << "\"error_messsage\": \"not found\"" << endl;
   }
-
-  size_t stop_index = tc_ptr->names_to_stops_.at(query_stop_name);
-
-  if (!tc_ptr->stops_to_buses_.count(stop_index)
-    || tc_ptr->stops_to_buses_.at(stop_index).empty())
+  else
   {
-    os << "Stop " << query_stop_name << ": no buses" << endl;
-    return;
+    size_t stop_index = tc_ptr->names_to_stops_.at(query_stop_name);
+
+    if (!tc_ptr->stops_to_buses_.count(stop_index)
+      || tc_ptr->stops_to_buses_.at(stop_index).empty())
+    {
+      os << "\"buses\": [] " << endl;
+    }
+    else
+    {
+      auto& buses_indexes = tc_ptr->stops_to_buses_.at(tc_ptr->names_to_stops_.at(query_stop_name));
+      vector<string> buses_ids{};
+
+      buses_ids.reserve(buses_indexes.size());
+
+      for (size_t bus_index: buses_indexes)
+      {
+        buses_ids.push_back(tc_ptr->buses_[bus_index].id);
+      }
+
+      sort(buses_ids.begin(), buses_ids.end(), less());
+
+      os << "\"buses\": [ "s;
+      for (size_t i = 0; i != buses_ids.size(); ++i)
+      {
+        const string& id = buses_ids[i];
+
+        if (i) os << ", "s;
+
+        os << "\""s << id << "\""s;
+      }
+      os << " ] "s;
+    }
   }
 
-  auto& buses_indexes =
-    tc_ptr->stops_to_buses_.at(tc_ptr->names_to_stops_.at(query_stop_name));
-  vector<string> buses_ids{};
-
-  buses_ids.reserve(buses_indexes.size());
-
-  os << "Stop " << query_stop_name << ": buses ";
-  for (size_t bus_index: buses_indexes)
-  {
-    buses_ids.push_back(tc_ptr->buses_[bus_index].id);
-  }
-
-  sort(buses_ids.begin(), buses_ids.end(), less());
-
-  for (const string& id: buses_ids)
-  {
-    os << id << " ";
-  }
-  os << endl;
+  os << "}"s;
   ApplyRenderBetween(os);
   ApplyRenderEnd(os);
 }
@@ -521,7 +529,9 @@ JSONResponseSeller::ApplyRenderStart(ostream& os)
 void
 JSONResponseSeller::ApplyRenderBetween(ostream& os)
 {
-  if (RenderedRequestIndex != RequestsIDsList.size() - 1) os << ","s << endl;
+  if (RenderedRequestIndex != RequestsIDsList.size() - 1) os << ","s;
+
+  os << endl;
 }
 void
 JSONResponseSeller::ApplyRenderEnd(ostream& os)
