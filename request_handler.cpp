@@ -405,7 +405,7 @@ JSONResponseSeller::send_bus(
 
   if (!tc_ptr->ids_to_buses_.count(bus_id))
   {
-    os << "\"error_message\": \"not found\""s << endl;
+    os << "\"error_message\": \"not found\" "s << endl;
   }
   else
   {
@@ -456,11 +456,11 @@ JSONResponseSeller::send_bus(
                                    ? practical_routes_length : theoretical_routes_length) << ", ";
     os << "\"stop_count\": " << routes_count << ", ";
     os << "\"unique_stop_count\": " << unique_routes_count << " ";
-
-    os << "}"s;
-    ApplyRenderBetween(os);
-    ApplyRenderEnd(os);
   }
+
+  os << "}"s;
+  ApplyRenderBetween(os);
+  ApplyRenderEnd(os);
 }
 
 void
