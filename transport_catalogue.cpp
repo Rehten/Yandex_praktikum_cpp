@@ -548,7 +548,7 @@ QueryParser::GetMetadataQueryForAddStop(const string_view& command)
   bool is_stop_name_getted(false);
   size_t coordinates_writen_count(0);
 
-  for (auto iter = command.begin(); iter != command.end(); ++iter)
+  for (auto iter = command.begin(); iter < command.end(); ++iter)
   {
     if (!is_stop_name_getted)
     {

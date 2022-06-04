@@ -8,8 +8,8 @@ int
 main()
 {
   TransportCatalogue catalogue(
-    make_unique<JSONRequestHandler>(),
-    make_unique<JSONResponseSeller>()
+    make_unique<RawRequestHandler>(),
+    make_unique<RawResponseSeller>()
   );
 
   catalogue.listen_db_commands_from(cin);
