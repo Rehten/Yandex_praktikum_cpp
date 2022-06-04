@@ -11,7 +11,7 @@
 
 #include "geo.h"
 
-#define __HAS_JSON_SUPPORT__ 0
+#define __HAS_JSON_SUPPORT__ 1
 
 #if __HAS_JSON_SUPPORT__
 #include "json_reader.h"
@@ -293,3 +293,14 @@ class RawResponseSeller : public ResponseSeller
   void
   send_stop(TransportCatalogue*, std::ostream&, std::vector<std::string_view>) override;
 };
+
+#if __HAS_JSON_SUPPORT__
+class JSONResponseSeller : public ResponseSeller
+{
+ public:
+  void
+  send_bus(TransportCatalogue*, std::ostream&, std::vector<std::string_view>) override;
+  void
+  send_stop(TransportCatalogue*, std::ostream&, std::vector<std::string_view>) override;
+};
+#endif

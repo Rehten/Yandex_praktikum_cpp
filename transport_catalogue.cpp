@@ -822,3 +822,13 @@ RawResponseSeller::send_stop(
   }
   os << endl;
 }
+
+#if __HAS_JSON_SUPPORT__
+void
+JSONResponseSeller::send_bus(TransportCatalogue*, std::ostream&, std::vector<std::string_view>)
+{}
+
+void
+JSONResponseSeller::send_stop(TransportCatalogue*, std::ostream&, std::vector<std::string_view>)
+{}
+#endif
