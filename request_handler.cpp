@@ -263,14 +263,14 @@ JSONRequestHandler::get_raw_db_stop_command_from(const json::Dict& stop_command_
   return raw_command;
 }
 std::string
-JSONRequestHandler::get_raw_output_bus_command_from(const json::Dict&) noexcept
+JSONRequestHandler::get_raw_output_bus_command_from(const json::Dict& bus_command_json) noexcept
 {
-  return std::string();
+  return "Bus "s + bus_command_json.at("name"s).AsString();
 }
 std::string
-JSONRequestHandler::get_raw_output_stop_command_from(const json::Dict&) noexcept
+JSONRequestHandler::get_raw_output_stop_command_from(const json::Dict& stop_command_json) noexcept
 {
-  return std::string();
+  return "Stop "s + stop_command_json.at("name"s).AsString();
 }
 #endif
 
