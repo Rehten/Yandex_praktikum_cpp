@@ -212,6 +212,8 @@ JSONRequestHandler::ocq_from_json(const json::Dict& command_json) noexcept
     raw_command = get_raw_output_stop_command_from(command_json);
   }
 
+  RequestsIDsList.push_back(static_cast<size_t>(command_json.at("id").AsInt()));
+
   return raw_command;
 }
 std::string
@@ -390,10 +392,149 @@ RawResponseSeller::send_stop(
 
 #if __HAS_JSON_SUPPORT__
 void
-JSONResponseSeller::send_bus(TransportCatalogue*, std::ostream&, std::vector<std::string_view>)
-{}
+JSONResponseSeller::send_bus(
+  TransportCatalogue* tc_ptr,
+  ostream& os,
+  std::vector<std::string_view> command_lexems
+)
+{
+  ApplyRenderStart(os);
+
+  string bus_id = string(command_lexems[0].begin(), command_lexems[0].end());
+
+  os << "Bus "s << bus_id << ": "s;
+
+  if (!tc_ptr->ids_to_buses_.count(bus_id))
+  {
+    os << "not found"s << endl;
+  }
+  else
+  {
+    auto selected_bus_stops = tc_ptr->buses_to_stops_.at(tc_ptr->ids_to_buses_.at(bus_id));
+
+    if (selected_bus_stops.size() < 2)
+    {
+      throw invalid_command_metadata();
+    }
+
+    size_t routes_count = selected_bus_stops.size();
+    size_t unique_routes_count =
+      set(selected_bus_stops.begin(), selected_bus_stops.end()).size();
+    bool is_practical_length_can_be_calculated(true);
+    double theoretical_routes_length{};
+    double practical_routes_length{};
+
+    for (size_t i = 1; i != selected_bus_stops.size(); ++i)
+    {
+      stop prev = tc_ptr->stops_[selected_bus_stops[i - 1]];
+      stop cur = tc_ptr->stops_[selected_bus_stops[i]];
+
+      theoretical_routes_length +=
+        ComputeDistance(*prev.coordinates, *cur.coordinates);
+
+      if (
+        is_practical_length_can_be_calculated &&
+          tc_ptr->stops_to_stop_distances_.count(prev.name)
+          &&
+            tc_ptr->stops_to_stop_distances_.at(prev.name).count(cur.name))
+      {
+        practical_routes_length += static_cast<double>(
+          tc_ptr->stops_to_stop_distances_
+            .at(prev.name)
+            .at(cur.name)
+        );
+      }
+      else
+      {
+        is_practical_length_can_be_calculated = false;
+      }
+    }
+
+    os << routes_count << " stops on route, "s
+       << unique_routes_count << " unique stops, "s
+       << (is_practical_length_can_be_calculated
+           ? practical_routes_length : theoretical_routes_length)
+       << " route length, "s
+       << static_cast<double>(
+         static_cast<double>(practical_routes_length)
+           / (round(theoretical_routes_length * 100) / 100))
+       << " curvature"s << endl;
+
+    ApplyRenderBetween(os);
+    ApplyRenderEnd(os);
+  }
+}
 
 void
-JSONResponseSeller::send_stop(TransportCatalogue*, std::ostream&, std::vector<std::string_view>)
-{}
+JSONResponseSeller::send_stop(
+  TransportCatalogue* tc_ptr,
+  ostream& os,
+  std::vector<std::string_view> command_lexems
+)
+{
+  ApplyRenderStart(os);
+
+  string query_stop_name = string(command_lexems[0].begin(), command_lexems[0].end());
+
+  if (!tc_ptr->names_to_stops_.count(query_stop_name))
+  {
+    os << "Stop " << query_stop_name << ": not found" << endl;
+    return;
+  }
+
+  size_t stop_index = tc_ptr->names_to_stops_.at(query_stop_name);
+
+  if (!tc_ptr->stops_to_buses_.count(stop_index)
+    || tc_ptr->stops_to_buses_.at(stop_index).empty())
+  {
+    os << "Stop " << query_stop_name << ": no buses" << endl;
+    return;
+  }
+
+  auto& buses_indexes =
+    tc_ptr->stops_to_buses_.at(tc_ptr->names_to_stops_.at(query_stop_name));
+  vector<string> buses_ids{};
+
+  buses_ids.reserve(buses_indexes.size());
+
+  os << "Stop " << query_stop_name << ": buses ";
+  for (size_t bus_index: buses_indexes)
+  {
+    buses_ids.push_back(tc_ptr->buses_[bus_index].id);
+  }
+
+  sort(buses_ids.begin(), buses_ids.end(), less());
+
+  for (const string& id: buses_ids)
+  {
+    os << id << " ";
+  }
+  os << endl;
+  ApplyRenderBetween(os);
+  ApplyRenderEnd(os);
+}
+void
+JSONResponseSeller::ApplyRenderStart(ostream& os)
+{
+  if (!RenderedRequestIndex) os << "["s << endl;
+}
+void
+JSONResponseSeller::ApplyRenderBetween(ostream& os)
+{
+  if (RenderedRequestIndex != RequestsIDsList.size() - 1) os << ","s << endl;
+}
+void
+JSONResponseSeller::ApplyRenderEnd(ostream& os)
+{
+  if (RenderedRequestIndex == RequestsIDsList.size() - 1)
+  {
+    os << "]"s;
+    RenderedRequestIndex = 0;
+    RequestsIDsList.clear();
+  }
+  else
+  {
+    ++RenderedRequestIndex;
+  }
+}
 #endif

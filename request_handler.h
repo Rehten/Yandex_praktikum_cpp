@@ -79,9 +79,18 @@ class RawResponseSeller : public ResponseSeller
 };
 
 #if __HAS_JSON_SUPPORT__
+static std::vector<size_t> RequestsIDsList;
+static size_t RenderedRequestIndex;
+
 class JSONResponseSeller : public ResponseSeller
 {
  public:
+  static void
+  ApplyRenderStart(std::ostream&);
+  static void
+  ApplyRenderBetween(std::ostream&);
+  static void
+  ApplyRenderEnd(std::ostream&);
   void
   send_bus(TransportCatalogue*, std::ostream&, std::vector<std::string_view>) override;
   void

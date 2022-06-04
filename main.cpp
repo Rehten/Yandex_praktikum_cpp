@@ -9,7 +9,7 @@ main()
 {
   TransportCatalogue catalogue(
     make_unique<JSONRequestHandler>(),
-    make_unique<RawResponseSeller>()
+    make_unique<JSONResponseSeller>()
   );
 
   catalogue.listen_db_commands_from(cin);

@@ -234,4 +234,5 @@ class TransportCatalogue
   friend class RequestHandler;
   friend class ResponseSeller;
   friend class RawResponseSeller;
+  friend class JSONResponseSeller;
 };
