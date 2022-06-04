@@ -399,14 +399,13 @@ JSONResponseSeller::send_bus(
 )
 {
   ApplyRenderStart(os);
+  os << "  { "s << "\"request_id\": "s << to_string(RequestsIDsList[RenderedRequestIndex]) << ", "s;
 
   string bus_id = string(command_lexems[0].begin(), command_lexems[0].end());
 
-  os << "Bus "s << bus_id << ": "s;
-
   if (!tc_ptr->ids_to_buses_.count(bus_id))
   {
-    os << "not found"s << endl;
+    os << "\"error_message\": \"not found\""s << endl;
   }
   else
   {
@@ -450,16 +449,15 @@ JSONResponseSeller::send_bus(
       }
     }
 
-    os << routes_count << " stops on route, "s
-       << unique_routes_count << " unique stops, "s
-       << (is_practical_length_can_be_calculated
-           ? practical_routes_length : theoretical_routes_length)
-       << " route length, "s
-       << static_cast<double>(
-         static_cast<double>(practical_routes_length)
-           / (round(theoretical_routes_length * 100) / 100))
-       << " curvature"s << endl;
+    os << "\"curvature\": " << static_cast<double>(
+      static_cast<double>(practical_routes_length)
+        / (round(theoretical_routes_length * 100) / 100)) << ", ";
+    os << "\"route_length\": " << (is_practical_length_can_be_calculated
+                                   ? practical_routes_length : theoretical_routes_length) << ", ";
+    os << "\"stop_count\": " << routes_count << ", ";
+    os << "\"unique_stop_count\": " << unique_routes_count << " ";
 
+    os << "}"s;
     ApplyRenderBetween(os);
     ApplyRenderEnd(os);
   }
