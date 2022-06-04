@@ -6,7 +6,7 @@ using namespace std;
 
 int main()
 {
-  TransportCatalogue catalogue(make_unique<RawRequestHandler>());
+  TransportCatalogue catalogue(make_unique<JSONRequestHandler>());
 
   catalogue.listen_db_commands_from(cin);
 

@@ -10,6 +10,7 @@
 #include <memory>
 
 #include "geo.h"
+#include "json_reader.h"
 
 struct invalid_command : public std::exception
 {
@@ -132,6 +133,20 @@ class RequestHandler
 
 class RawRequestHandler : public RequestHandler
 {
+ public:
+  std::vector<DBCommandQuery>
+  get_db_commands_from(std::istream&) override;
+  std::vector<OutputCommandQuery>
+  get_output_commands_from(std::istream&) override;
+};
+
+class JSONRequestHandler : public RequestHandler
+{
+  RawRequestHandler raw_request_handler_;
+  JSONReader json_reader_;
+
+  std::string dcq_from_json(const json::Dict&);
+  std::string ocq_from_json(const json::Dict&);
  public:
   std::vector<DBCommandQuery>
   get_db_commands_from(std::istream&) override;

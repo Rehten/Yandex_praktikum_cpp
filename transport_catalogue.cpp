@@ -3,6 +3,7 @@
 #include <numeric>
 #include <algorithm>
 #include <cstring>
+#include <sstream>
 #include <iomanip>
 
 #include "transport_catalogue.h"
@@ -497,6 +498,72 @@ RawRequestHandler::get_output_commands_from(istream& is)
   }
 
   return output_commands;
+}
+
+vector<JSONRequestHandler::DBCommandQuery>
+JSONRequestHandler::get_db_commands_from(istream& is)
+{
+  if (!json_reader_) is >> json_reader_;
+
+  json::Document document = json_reader_.get_json_as_document();
+  json::Array requests = document.GetRoot().AsMap().at("base_requests"s).AsArray();
+  vector<string> raw_commands{};
+
+  for (auto& request: requests)
+  {
+    raw_commands.push_back(dcq_from_json(request.AsMap()));
+  }
+
+  stringstream string_stream(
+    to_string(raw_commands.size())
+      + "\n"s
+      + reduce(
+        raw_commands.begin(),
+        raw_commands.end(),
+        ""s,
+        plus()
+      )
+  );
+
+  return raw_request_handler_.get_db_commands_from(string_stream);
+}
+
+vector<JSONRequestHandler::OutputCommandQuery>
+JSONRequestHandler::get_output_commands_from(istream& is)
+{
+  if (!json_reader_) is >> json_reader_;
+
+  json::Document document = json_reader_.get_json_as_document();
+  json::Array requests = document.GetRoot().AsMap().at("stats_requests"s).AsArray();
+  vector<string> raw_commands{};
+
+  for (auto& request: requests)
+  {
+    raw_commands.push_back(dcq_from_json(request.AsMap()));
+  }
+
+  stringstream string_stream(
+    to_string(raw_commands.size())
+      + "\n"s
+      + reduce(
+        raw_commands.begin(),
+        raw_commands.end(),
+        ""s,
+        plus()
+      )
+  );
+
+  return raw_request_handler_.get_output_commands_from(string_stream);
+}
+string
+JSONRequestHandler::dcq_from_json(const json::Dict&)
+{
+  return RequestHandler::DBCommandQuery();
+}
+string
+JSONRequestHandler::ocq_from_json(const json::Dict&)
+{
+  return RequestHandler::OutputCommandQuery();
 }
 
 vector<string_view>
