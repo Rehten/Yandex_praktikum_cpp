@@ -13,4 +13,4 @@ add_executable(
         svg.cpp
         transport_catalogue.h
         transport_catalogue.cpp
-        domain.h domain.cpp json_reader.h json_reader.cpp)
+        domain.h domain.cpp json_reader.h json_reader.cpp request_handler.h request_handler.cpp geo.cpp)

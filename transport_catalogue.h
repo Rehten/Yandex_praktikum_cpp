@@ -10,12 +10,10 @@
 #include <memory>
 
 #include "geo.h"
+#include "request_handler.h"
 
-#define __HAS_JSON_SUPPORT__ 1
-
-#if __HAS_JSON_SUPPORT__
-#include "json_reader.h"
-#endif
+class RequestHandler;
+class ResponseSeller;
 
 struct invalid_command : public std::exception
 {
@@ -33,14 +31,14 @@ struct stop_already_has_coordinates : public std::exception
 {
 };
 
-enum DBCommands
+enum class DBCommands
 {
   AddBus,
   AddStop,
   AddRoute,
 };
 
-enum OutputCommands
+enum class OutputCommands
 {
   PrintBus = 100000,
   PrintStop = 100001,
@@ -50,7 +48,7 @@ struct stop
 {
   size_t id;
   std::string name;
-  std::optional<Coordinates> coordinates;
+  std::optional<geo::Coordinates> coordinates;
 };
 
 struct bus
@@ -67,7 +65,7 @@ using BusMeta = std::pair<std::string, std::vector<std::string_view>>;
 struct StopMeta
 {
   std::string name;
-  Coordinates coordinates;
+  geo::Coordinates coordinates;
   std::vector<std::string_view> dependencies;
 };
 
@@ -123,44 +121,6 @@ class QueryParser
   static std::pair<std::string_view, std::string_view>
   DivideCommandByCodeAndValue(const std::string& src);
 };
-
-class RequestHandler
-{
- protected:
-  using DBCommandQuery = std::pair<DBCommands, std::string>;
-  using OutputCommandQuery = std::pair<OutputCommands, std::string>;
- public:
-  virtual std::vector<DBCommandQuery>
-  get_db_commands_from(std::istream&) = 0;
-  virtual std::vector<OutputCommandQuery>
-  get_output_commands_from(std::istream&) = 0;
-};
-
-class RawRequestHandler : public RequestHandler
-{
- public:
-  std::vector<DBCommandQuery>
-  get_db_commands_from(std::istream&) override;
-  std::vector<OutputCommandQuery>
-  get_output_commands_from(std::istream&) override;
-};
-
-#if __HAS_JSON_SUPPORT__
-class JSONRequestHandler : public RequestHandler
-{
-  RawRequestHandler raw_request_handler_;
-  JSONReader json_reader_;
-
-  std::string dcq_from_json(const json::Dict&) noexcept;
-  std::string ocq_from_json(const json::Dict&) noexcept;
- public:
-  std::vector<DBCommandQuery>
-  get_db_commands_from(std::istream&) override;
-  std::vector<OutputCommandQuery>
-  get_output_commands_from(std::istream&) override;
-};
-#endif
-class ResponseSeller;
 
 class TransportCatalogue
 {
@@ -275,32 +235,3 @@ class TransportCatalogue
   friend class ResponseSeller;
   friend class RawResponseSeller;
 };
-
-class ResponseSeller
-{
- public:
-  virtual void
-  send_bus(TransportCatalogue*, std::ostream&, std::vector<std::string_view>) = 0;
-  virtual void
-  send_stop(TransportCatalogue*, std::ostream&, std::vector<std::string_view>) = 0;
-};
-
-class RawResponseSeller : public ResponseSeller
-{
- public:
-  void
-  send_bus(TransportCatalogue*, std::ostream&, std::vector<std::string_view>) override;
-  void
-  send_stop(TransportCatalogue*, std::ostream&, std::vector<std::string_view>) override;
-};
-
-#if __HAS_JSON_SUPPORT__
-class JSONResponseSeller : public ResponseSeller
-{
- public:
-  void
-  send_bus(TransportCatalogue*, std::ostream&, std::vector<std::string_view>) override;
-  void
-  send_stop(TransportCatalogue*, std::ostream&, std::vector<std::string_view>) override;
-};
-#endif
