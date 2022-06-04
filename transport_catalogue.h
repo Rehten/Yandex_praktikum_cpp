@@ -10,7 +10,12 @@
 #include <memory>
 
 #include "geo.h"
+
+#define __HAS_JSON_SUPPORT__ 0
+
+#if __HAS_JSON_SUPPORT__
 #include "json_reader.h"
+#endif
 
 struct invalid_command : public std::exception
 {
@@ -140,6 +145,7 @@ class RawRequestHandler : public RequestHandler
   get_output_commands_from(std::istream&) override;
 };
 
+#if __HAS_JSON_SUPPORT__
 class JSONRequestHandler : public RequestHandler
 {
   RawRequestHandler raw_request_handler_;
@@ -153,7 +159,7 @@ class JSONRequestHandler : public RequestHandler
   std::vector<OutputCommandQuery>
   get_output_commands_from(std::istream&) override;
 };
-
+#endif
 class ResponseSeller;
 
 class TransportCatalogue

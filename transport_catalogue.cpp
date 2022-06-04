@@ -405,6 +405,7 @@ RawRequestHandler::get_output_commands_from(istream& is)
   return output_commands;
 }
 
+#if __HAS_JSON_SUPPORT__
 vector<JSONRequestHandler::DBCommandQuery>
 JSONRequestHandler::get_db_commands_from(istream& is)
 {
@@ -472,6 +473,7 @@ JSONRequestHandler::ocq_from_json(const json::Dict& command) noexcept
 {
   return ""s;
 }
+#endif
 
 vector<string_view>
 QueryParser::GetMetadataQueryForAddBus(const string_view& command)
