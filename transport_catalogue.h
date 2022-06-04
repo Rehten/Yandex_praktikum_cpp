@@ -145,8 +145,8 @@ class JSONRequestHandler : public RequestHandler
   RawRequestHandler raw_request_handler_;
   JSONReader json_reader_;
 
-  std::string dcq_from_json(const json::Dict&);
-  std::string ocq_from_json(const json::Dict&);
+  std::string dcq_from_json(const json::Dict&) noexcept;
+  std::string ocq_from_json(const json::Dict&) noexcept;
  public:
   std::vector<DBCommandQuery>
   get_db_commands_from(std::istream&) override;
@@ -205,9 +205,9 @@ class TransportCatalogue
   listen_output_commands_from(std::istream&, std::ostream&);
  private:
   /**
- * @brief Применяет команду к целевому справочнику
- * @param command Код команды с соответствующими данными
- */
+   * @brief Применяет команду к целевому справочнику
+   * @param command Код команды с соответствующими данными
+   */
   void
   apply_db_command(const std::pair<DBCommands, std::string>&);
 

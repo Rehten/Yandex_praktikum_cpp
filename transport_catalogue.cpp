@@ -242,7 +242,7 @@ TransportCatalogue::apply_output_command(
       output_stream << endl;
       return;
     }
-    default:throw invalid_command_code();
+    default: throw invalid_command_code();
   }
 }
 
@@ -539,7 +539,7 @@ JSONRequestHandler::get_output_commands_from(istream& is)
 
   for (auto& request: requests)
   {
-    raw_commands.push_back(dcq_from_json(request.AsMap()));
+    raw_commands.push_back(ocq_from_json(request.AsMap()));
   }
 
   stringstream string_stream(
@@ -555,15 +555,17 @@ JSONRequestHandler::get_output_commands_from(istream& is)
 
   return raw_request_handler_.get_output_commands_from(string_stream);
 }
+
 string
-JSONRequestHandler::dcq_from_json(const json::Dict&)
+JSONRequestHandler::dcq_from_json(const json::Dict& command) noexcept
 {
-  return RequestHandler::DBCommandQuery();
+  return ""s;
 }
+
 string
-JSONRequestHandler::ocq_from_json(const json::Dict&)
+JSONRequestHandler::ocq_from_json(const json::Dict& command) noexcept
 {
-  return RequestHandler::OutputCommandQuery();
+  return ""s;
 }
 
 vector<string_view>
