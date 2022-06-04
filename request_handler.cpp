@@ -137,7 +137,19 @@ JSONRequestHandler::get_db_commands_from(istream& is)
       )
   );
 
-  return raw_request_handler_.get_db_commands_from(string_stream);
+  vector<DBCommandQuery> db_commands{};
+  db_commands.reserve(raw_commands.size());
+
+  for (size_t i = 0; i != raw_commands.size(); ++i)
+  {
+    const auto& str = raw_commands[i];
+    auto db_command = QueryParser::GetDBCommandCodeAndQuery(str);
+    string command_meta = string(db_command.second.begin(), db_command.second.end());
+
+    db_commands.push_back({db_command.first, command_meta});
+  }
+
+  return db_commands;
 }
 
 vector<JSONRequestHandler::OutputCommandQuery>
@@ -146,7 +158,7 @@ JSONRequestHandler::get_output_commands_from(istream& is)
   if (!json_reader_) is >> json_reader_;
 
   json::Document document = json_reader_.get_json_as_document();
-  json::Array requests = document.GetRoot().AsMap().at("stats_requests"s).AsArray();
+  json::Array requests = document.GetRoot().AsMap().at("stat_requests"s).AsArray();
   vector<string> raw_commands{};
 
   for (auto& request: requests)
@@ -154,30 +166,111 @@ JSONRequestHandler::get_output_commands_from(istream& is)
     raw_commands.push_back(ocq_from_json(request.AsMap()));
   }
 
-  stringstream string_stream(
-    to_string(raw_commands.size())
-      + "\n"s
-      + reduce(
-        raw_commands.begin(),
-        raw_commands.end(),
-        ""s,
-        plus()
-      )
-  );
+  vector<OutputCommandQuery> output_commands{};
+  output_commands.reserve(raw_commands.size());
 
-  return raw_request_handler_.get_output_commands_from(string_stream);
+  for (size_t i = 0; i != raw_commands.size(); ++i)
+  {
+    const auto& str = raw_commands[i];
+    auto db_command = QueryParser::GetOutputCommandCodeAndQuery(str);
+    string command_meta = string(db_command.second.begin(), db_command.second.end());
+
+    output_commands.push_back({db_command.first, command_meta});
+  }
+
+  return output_commands;
 }
 
 string
-JSONRequestHandler::dcq_from_json(const json::Dict&) noexcept
+JSONRequestHandler::dcq_from_json(const json::Dict& command_json) noexcept
 {
-  return ""s;
+  string raw_command{};
+
+  if (command_json.at("type"s) == "Bus"s)
+  {
+    raw_command = get_raw_db_bus_command_from(command_json);
+  }
+  else if (command_json.at("type"s) == "Stop"s)
+  {
+    raw_command = get_raw_db_stop_command_from(command_json);
+  }
+
+  return raw_command;
 }
 
 string
-JSONRequestHandler::ocq_from_json(const json::Dict&) noexcept
+JSONRequestHandler::ocq_from_json(const json::Dict& command_json) noexcept
 {
-  return ""s;
+  string raw_command{};
+
+  if (command_json.at("type"s) == "Bus"s)
+  {
+    raw_command = get_raw_output_bus_command_from(command_json);
+  }
+  else if (command_json.at("type"s) == "Stop"s)
+  {
+    raw_command = get_raw_output_stop_command_from(command_json);
+  }
+
+  return raw_command;
+}
+std::string
+JSONRequestHandler::get_raw_db_bus_command_from(const json::Dict& bus_command_json) noexcept
+{
+  string raw_command = {};
+  raw_command.reserve(100);
+  json::Array stops_json = bus_command_json.at("stops"s).AsArray();
+  char divider = '>';
+
+  if (stops_json.size() && *stops_json.begin() != *stops_json.rbegin())
+  {
+    divider = '-';
+  }
+
+  raw_command += "Bus "s + bus_command_json.at("name"s).AsString() + ": "s;
+
+  for (size_t i = 0; i != stops_json.size(); ++i)
+  {
+    if (i)
+    {
+      raw_command += " "s + divider + " "s;
+    }
+
+    raw_command += stops_json[i].AsString();
+  }
+
+  return raw_command;
+}
+std::string
+JSONRequestHandler::get_raw_db_stop_command_from(const json::Dict& stop_command_json) noexcept
+{
+  string raw_command = {};
+  raw_command.reserve(100);
+  json::Dict distantions = stop_command_json.at("road_distances"s).AsMap();
+
+  raw_command += "Stop "s
+    + stop_command_json.at("name"s).AsString()
+    + ": "
+    + to_string(stop_command_json.at("latitude"s).AsDouble())
+    + ", "
+    + to_string(stop_command_json.at("longitude"s).AsDouble());
+
+  for (const auto& [stop_name, distantion] : distantions)
+  {
+    raw_command += ", "s + to_string(distantion.AsInt()) + "m to "s + stop_name;
+  }
+
+  return raw_command;
+}
+std::string
+JSONRequestHandler::get_raw_output_bus_command_from(const json::Dict&) noexcept
+{
+  return std::string();
+}
+std::string
+JSONRequestHandler::get_raw_output_stop_command_from(const json::Dict&) noexcept
+{
+  return std::string();
 }
 #endif
 

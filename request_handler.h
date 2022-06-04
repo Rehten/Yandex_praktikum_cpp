@@ -43,11 +43,14 @@ class RawRequestHandler : public RequestHandler
 #if __HAS_JSON_SUPPORT__
 class JSONRequestHandler : public RequestHandler
 {
-  RawRequestHandler raw_request_handler_;
   JSONReader json_reader_;
 
   std::string dcq_from_json(const json::Dict&) noexcept;
+  std::string get_raw_db_bus_command_from(const json::Dict&) noexcept;
+  std::string get_raw_db_stop_command_from(const json::Dict&) noexcept;
   std::string ocq_from_json(const json::Dict&) noexcept;
+  std::string get_raw_output_bus_command_from(const json::Dict&) noexcept;
+  std::string get_raw_output_stop_command_from(const json::Dict&) noexcept;
  public:
   std::vector<DBCommandQuery>
   get_db_commands_from(std::istream&) override;

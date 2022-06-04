@@ -34,7 +34,7 @@ operator >>(istream& is, JSONReader& json_reader)
   vector<string> json_raw{};
   string cur_line{};
 
-  while (is.eof())
+  while (!is.eof())
   {
     cur_line.clear();
     getline(is, cur_line, '\n');
