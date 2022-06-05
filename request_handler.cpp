@@ -14,6 +14,9 @@ using namespace std;
 using namespace literals::string_literals;
 using namespace literals::string_view_literals;
 
+static std::vector<size_t> RequestsIDsList;
+static size_t RenderedRequestIndex;
+
 vector<RequestHandler::DBCommandQuery>
 RawRequestHandler::get_db_commands_from(istream& is)
 {

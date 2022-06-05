@@ -79,9 +79,6 @@ class RawResponseSeller : public ResponseSeller
 };
 
 #if __HAS_JSON_SUPPORT__
-static std::vector<size_t> RequestsIDsList;
-static size_t RenderedRequestIndex;
-
 class JSONResponseSeller : public ResponseSeller
 {
  public:
