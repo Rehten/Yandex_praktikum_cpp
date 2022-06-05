@@ -34,9 +34,13 @@ operator >>(istream& is, JSONReader& json_reader)
   vector<string> json_raw{};
   string cur_line{};
 
-  getline(is, cur_line, '\n');
+  while (!is.eof())
+  {
+    cur_line.clear();
+    getline(is, cur_line, '\n');
 
-  json_raw.push_back(cur_line);
+    json_raw.push_back(cur_line);
+  }
 
   is.clear(istream::eofbit | istream::failbit);
 
