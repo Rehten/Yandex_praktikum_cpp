@@ -408,7 +408,7 @@ JSONResponseSeller::send_bus(
 
   if (!tc_ptr->ids_to_buses_.count(bus_id))
   {
-    os << "\"error_message\": \"not found\" "s << endl;
+    os << "\"error_message\": \"not found\" "s;
   }
   else
   {
@@ -480,7 +480,7 @@ JSONResponseSeller::send_stop(
 
   if (!tc_ptr->names_to_stops_.count(query_stop_name))
   {
-    os << "\"error_messsage\": \"not found\"" << endl;
+    os << "\"error_messsage\": \"not found\" ";
   }
   else
   {
