@@ -295,7 +295,10 @@ json::Dict LoadDict(istream &input) {
 	auto arr_node_stream = istringstream(value);
 
 	auto cleared = CuttedStringView(key);
-	rslt[string{cleared.begin() + 1, cleared.end() - 1}] = LoadNode(arr_node_stream);
+	if (cleared != ""sv)
+  {
+    rslt[string{cleared.begin() + 1, cleared.end() - 1}] = LoadNode(arr_node_stream);
+  }
   }
 
   return rslt;

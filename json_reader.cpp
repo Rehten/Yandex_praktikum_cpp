@@ -1,10 +1,17 @@
 #include <vector>
 #include <sstream>
 #include <numeric>
+#include <exception>
+#include <stack>
+#include <iostream>
 
 #include "json.h"
 #include "json_reader.h"
 
+using std::stack;
+using std::exception;
+using std::cout;
+using std::endl;
 using std::istream;
 using std::ios;
 using std::vector;
@@ -33,29 +40,55 @@ operator >>(istream& is, JSONReader& json_reader)
   vector<string> json_raw{};
   string cur_line{};
   bool is_json_parsed(false);
+  string flatten_json{};
 
   while (!is_json_parsed)
   {
+    stack<char> brackets_checker{};
+
     cur_line.clear();
     getline(is, cur_line, '\n');
 
     json_raw.push_back(cur_line);
 
-    try
-    {
-      string flatten_json = reduce(
-        json_raw.begin(),
-        json_raw.end(),
-        string{},
-        plus()
-      );
-      istringstream is_test_stream = istringstream(flatten_json);
+    flatten_json += cur_line;
 
-      json::Load(is_test_stream);
+    for (char c : flatten_json)
+    {
+      if (c == '{' || c == '[')
+      {
+        brackets_checker.push(c);
+      }
+
+      if (c == '}')
+      {
+        if (brackets_checker.top() == '{')
+        {
+          brackets_checker.pop();
+        }
+        else
+        {
+          throw exception();
+        }
+      }
+
+      if (c == ']')
+      {
+        if (brackets_checker.top() == '[')
+        {
+          brackets_checker.pop();
+        }
+        else
+        {
+          throw exception();
+        }
+      }
+    }
+
+    if (brackets_checker.empty())
+    {
       is_json_parsed = true;
     }
-    catch (...)
-    {}
   }
 
   json_reader.json_raws_ = json_raw;

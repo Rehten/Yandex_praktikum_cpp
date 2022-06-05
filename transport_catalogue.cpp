@@ -407,8 +407,8 @@ QueryParser::GetMetadataQueryForAddStop(const string_view& command)
         }
 
         ++coordinates_writen_count;
-        stop_metadata_query.push_back({&*lexem_begin, static_cast<size_t>(&*iter
-          - &*lexem_begin)}
+        stop_metadata_query.push_back({&*lexem_begin, static_cast<size_t>(iter
+          - lexem_begin)}
         );
 
         if (command.end() - iter == 0)
