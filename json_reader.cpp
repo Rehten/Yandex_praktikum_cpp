@@ -1,4 +1,3 @@
-#include <stack>
 #include <vector>
 #include <sstream>
 #include <numeric>
@@ -33,16 +32,31 @@ operator >>(istream& is, JSONReader& json_reader)
 {
   vector<string> json_raw{};
   string cur_line{};
+  bool is_json_parsed(false);
 
-  while (!is.eof())
+  while (!is_json_parsed)
   {
     cur_line.clear();
     getline(is, cur_line, '\n');
 
     json_raw.push_back(cur_line);
-  }
 
-  is.clear(istream::eofbit | istream::failbit);
+    try
+    {
+      string flatten_json = reduce(
+        json_raw.begin(),
+        json_raw.end(),
+        string{},
+        plus()
+      );
+      istringstream is_test_stream = istringstream(flatten_json);
+
+      json::Load(is_test_stream);
+      is_json_parsed = true;
+    }
+    catch (...)
+    {}
+  }
 
   json_reader.json_raws_ = json_raw;
 
