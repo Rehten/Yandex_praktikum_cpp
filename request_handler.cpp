@@ -422,7 +422,6 @@ JSONResponseSeller::send_bus(
     size_t routes_count = selected_bus_stops.size();
     size_t unique_routes_count =
       set(selected_bus_stops.begin(), selected_bus_stops.end()).size();
-    bool is_practical_length_can_be_calculated(true);
     double theoretical_routes_length{};
     double practical_routes_length{};
 
@@ -444,8 +443,7 @@ JSONResponseSeller::send_bus(
     os << "\"curvature\": " << static_cast<double>(
       static_cast<double>(practical_routes_length)
         / (round(theoretical_routes_length * 100) / 100)) << ", ";
-    os << "\"route_length\": " << (is_practical_length_can_be_calculated
-                                   ? practical_routes_length : theoretical_routes_length) << ", ";
+    os << "\"route_length\": " << practical_routes_length << ", ";
     os << "\"stop_count\": " << routes_count << ", ";
     os << "\"unique_stop_count\": " << unique_routes_count << " ";
   }
