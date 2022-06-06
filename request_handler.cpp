@@ -480,7 +480,7 @@ JSONResponseSeller::send_stop(
 
   if (!tc_ptr->names_to_stops_.count(query_stop_name))
   {
-    os << "\"error_messsage\": \"not found\" ";
+    os << "\"error_message\": \"not found\" ";
   }
   else
   {
