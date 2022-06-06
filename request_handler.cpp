@@ -434,22 +434,11 @@ JSONResponseSeller::send_bus(
       theoretical_routes_length +=
         ComputeDistance(*prev.coordinates, *cur.coordinates);
 
-      if (
-        is_practical_length_can_be_calculated &&
-          tc_ptr->stops_to_stop_distances_.count(prev.name)
-          &&
-            tc_ptr->stops_to_stop_distances_.at(prev.name).count(cur.name))
-      {
-        practical_routes_length += static_cast<double>(
-          tc_ptr->stops_to_stop_distances_
-            .at(prev.name)
-            .at(cur.name)
-        );
-      }
-      else
-      {
-        is_practical_length_can_be_calculated = false;
-      }
+      practical_routes_length += static_cast<double>(
+        tc_ptr->stops_to_stop_distances_
+          .at(prev.name)
+          .at(cur.name)
+      );
     }
 
     os << "\"curvature\": " << static_cast<double>(
